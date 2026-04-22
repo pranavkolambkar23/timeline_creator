@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
+import Providers from "./providers"; // ✅ ADD THIS
+
 // 🔥 Main UI Font (Best for apps)
 const inter = Inter({
   subsets: ["latin"],
@@ -32,7 +34,12 @@ export default function RootLayout({
       className={`${inter.variable} ${jetbrainsMono.variable} h-full`}
     >
       <body className="min-h-full bg-gradient-to-b from-gray-50 to-white text-gray-800 antialiased">
-        {children}
+
+        {/* ✅ WRAP APP HERE */}
+        <Providers>
+          {children}
+        </Providers>
+
       </body>
     </html>
   );

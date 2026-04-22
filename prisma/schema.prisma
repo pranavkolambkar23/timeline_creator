@@ -19,11 +19,9 @@ model User {
   role      Role     @default(USER)
   createdAt DateTime @default(now())
 
-  // NextAuth relations
   accounts Account[]
   sessions Session[]
 
-  // 🔥 NEW: User → Timelines (1 to many)
   timelines Timeline[]
 }
 
@@ -36,11 +34,25 @@ model Timeline {
   isFeatured Boolean  @default(false)
   createdAt  DateTime @default(now())
 
-  // 🔥 RELATION FIELD (FK)
   userId String
 
-  // 🔥 RELATION
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  timelineEvents TimelineEvent[]
+}
+
+model TimelineEvent {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  date        DateTime
+  displayDate String?
+
+  createdAt DateTime @default(now())
+
+  timelineId String
+  timeline   Timeline @relation(fields: [timelineId], references: [id], onDelete: Cascade)
+
+  @@index([timelineId])
 }
 
 model Account {
