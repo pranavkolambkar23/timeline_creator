@@ -23,8 +23,7 @@ export default function FullMapView({ events }: FullMapViewProps) {
   const STADIA_KEY = process.env.NEXT_PUBLIC_STADIA_MAPS_KEY;
   const mapStyle = `https://tiles.stadiamaps.com/styles/alidade_smooth_dark.json?api_key=${STADIA_KEY}`;
 
-  // Extract GeoJSON only for visible layers
-  const geoJsonData = useMemo(() => {
+  const geoJsonData = useMemo<any>(() => {
     const features: any[] = [];
     events.forEach(event => {
       // Only render if the event has location data AND is currently toggled "on" in the layer panel

@@ -17,7 +17,7 @@ export default function InteractiveMap({ events, activeEventId }: InteractiveMap
   const mapStyle = `https://tiles.stadiamaps.com/styles/alidade_smooth_dark.json?api_key=${STADIA_KEY}`;
 
   // Process events to extract GeoJSON data
-  const geoJsonData = useMemo(() => {
+  const geoJsonData = useMemo<any>(() => {
     const features: any[] = [];
     
     events.forEach(event => {
