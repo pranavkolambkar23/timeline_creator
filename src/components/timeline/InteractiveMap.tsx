@@ -121,20 +121,20 @@ export default function InteractiveMap({ events, activeEventId }: InteractiveMap
             id="polygons-fill"
             type="fill"
             filter={['==', ['geometry-type'], 'Polygon']}
-            paint={{
+            paint={({
               'fill-color': ['case', isTargetEvent, '#8b5cf6', '#4b5563'], // Violet if active, Grey if inactive
               'fill-opacity': ['case', isTargetEvent, 0.25, 0.05]
-            }}
+            } as any)}
           />
           <Layer 
             id="polygons-line"
             type="line"
             filter={['==', ['geometry-type'], 'Polygon']}
-            paint={{
+            paint={({
               'line-color': ['case', isTargetEvent, '#8b5cf6', '#4b5563'],
               'line-width': ['case', isTargetEvent, 2, 1],
               'line-opacity': ['case', isTargetEvent, 0.9, 0.3]
-            }}
+            } as any)}
           />
         </Source>
 
@@ -144,12 +144,12 @@ export default function InteractiveMap({ events, activeEventId }: InteractiveMap
             id="lines"
             type="line"
             filter={['==', ['geometry-type'], 'LineString']}
-            paint={{
+            paint={({
               'line-color': ['case', isTargetEvent, '#38bdf8', '#4b5563'], // Neon Blue if active, Grey if not
               'line-width': ['case', isTargetEvent, 4, 2],
               'line-dasharray': [2, 2],
               'line-opacity': ['case', isTargetEvent, 1, 0.2]
-            }}
+            } as any)}
           />
         </Source>
 
@@ -160,24 +160,24 @@ export default function InteractiveMap({ events, activeEventId }: InteractiveMap
             id="points-glow"
             type="circle"
             filter={['==', ['geometry-type'], 'Point']}
-            paint={{
+            paint={({
               'circle-radius': ['case', isTargetEvent, 18, 0], // Only glow if active
               'circle-color': '#c084fc',
               'circle-opacity': 0.3,
               'circle-blur': 1
-            }}
+            } as any)}
           />
           {/* Main solid dot */}
           <Layer 
             id="points-core"
             type="circle"
             filter={['==', ['geometry-type'], 'Point']}
-            paint={{
+            paint={({
               'circle-radius': ['case', isTargetEvent, 7, 4], // Bigger if active
               'circle-color': ['case', isTargetEvent, '#c084fc', '#6b7280'], // Purple if active, Grey if inactive
               'circle-stroke-width': 2,
               'circle-stroke-color': '#111827'
-            }}
+            } as any)}
           />
         </Source>
       </Map>

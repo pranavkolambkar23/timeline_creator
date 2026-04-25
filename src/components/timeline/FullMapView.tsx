@@ -228,22 +228,22 @@ export default function FullMapView({ events }: FullMapViewProps) {
             id="polygons-fill"
             type="fill"
             filter={['==', ['geometry-type'], 'Polygon']}
-            paint={{
+            paint={({
               'fill-color': '#8b5cf6',
               'fill-opacity': hasSelection 
                 ? ['case', isTargetEvent, 0.4, 0.05] 
                 : 0.15
-            }}
+            } as any)}
           />
           <Layer 
             id="polygons-line"
             type="line"
             filter={['==', ['geometry-type'], 'Polygon']}
-            paint={{
+            paint={({
               'line-color': '#8b5cf6',
               'line-width': hasSelection ? ['case', isTargetEvent, 3, 1] : 2,
               'line-opacity': hasSelection ? ['case', isTargetEvent, 1, 0.3] : 0.8
-            }}
+            } as any)}
           />
         </Source>
 
@@ -253,12 +253,12 @@ export default function FullMapView({ events }: FullMapViewProps) {
             id="lines"
             type="line"
             filter={['==', ['geometry-type'], 'LineString']}
-            paint={{
+            paint={({
               'line-color': '#38bdf8',
               'line-width': hasSelection ? ['case', isTargetEvent, 5, 2] : 3,
               'line-dasharray': [2, 2],
               'line-opacity': hasSelection ? ['case', isTargetEvent, 1, 0.3] : 0.8
-            }}
+            } as any)}
           />
         </Source>
 
@@ -269,24 +269,24 @@ export default function FullMapView({ events }: FullMapViewProps) {
             id="points-glow"
             type="circle"
             filter={['==', ['geometry-type'], 'Point']}
-            paint={{
+            paint={({
               'circle-radius': hasSelection ? ['case', isTargetEvent, 20, 0] : 14,
               'circle-color': '#c084fc',
               'circle-opacity': 0.3,
               'circle-blur': 1
-            }}
+            } as any)}
           />
           {/* Core */}
           <Layer 
             id="points-core"
             type="circle"
             filter={['==', ['geometry-type'], 'Point']}
-            paint={{
+            paint={({
               'circle-radius': hasSelection ? ['case', isTargetEvent, 8, 4] : 6,
               'circle-color': hasSelection ? ['case', isTargetEvent, '#c084fc', '#6b7280'] : '#c084fc',
               'circle-stroke-width': 2,
               'circle-stroke-color': '#111827'
-            }}
+            } as any)}
           />
         </Source>
 
