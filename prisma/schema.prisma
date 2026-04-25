@@ -48,6 +48,7 @@ model TimelineEvent {
   description String
   date        DateTime
   displayDate String?
+  locationData Json?
 
   createdAt DateTime @default(now())
 

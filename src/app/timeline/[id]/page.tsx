@@ -1,4 +1,4 @@
-import HorizontalTimeline from "@/components/timeline/HorizontalTimeline";
+import TimelineViewManager from "@/components/timeline/TimelineViewManager";
 import { prisma } from "@/lib/prisma";
 import Header from "@/components/Header";
 import { getServerSession } from "next-auth";
@@ -37,6 +37,7 @@ export default async function TimelinePage({
                         description: e.description,
                         date: e.date,
                         displayDate: e.displayDate || new Date(e.date).toLocaleDateString("en-US", { month: 'short', year: 'numeric' }),
+                        locationData: e.locationData,
                     })),
                 };
             }
@@ -100,12 +101,7 @@ export default async function TimelinePage({
                 </div>
 
                 {/* THE FOCUS ENGINE */}
-                <div className="w-full border-t border-foreground/5">
-                    <HorizontalTimeline 
-                        events={timeline.events} 
-                        timelineTitle={timeline.title}
-                    />
-                </div>
+                <TimelineViewManager timeline={timeline} />
 
                 {/* FINAL FOOTER */}
                 <div className="max-w-7xl mx-auto px-6 py-40 flex flex-col items-center">
