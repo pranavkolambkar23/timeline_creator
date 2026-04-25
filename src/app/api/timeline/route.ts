@@ -18,7 +18,7 @@ export async function POST(req: Request) {
 
         // 📝 2. Parse body
         const body = await req.json();
-        const { title, description, events } = body;
+        const { title, description, events, category, tags } = body;
 
         // ⚠️ 3. Validate timeline
         if (!title || !description) {
@@ -51,6 +51,8 @@ export async function POST(req: Request) {
             data: {
                 title,
                 description,
+                category: category || "General",
+                tags: tags || [],
                 userId: session.user.id,
 
                 timelineEvents: {
@@ -86,11 +88,14 @@ export async function POST(req: Request) {
 
 
 // 📥 GET → Fetch logged-in user's timelines (CARD VIEW)
-export async function GET() {
+export async function GET(req: Request) {
     try {
+        const { searchParams } = new URL(req.url);
+        const featured = searchParams.get("featured") === "true";
+
         const session = await getServerSession(authOptions);
 
-        if (!session || !session.user?.id) {
+        if (!featured && (!session || !session.user?.id)) {
             return NextResponse.json(
                 { error: "Unauthorized" },
                 { status: 401 }
@@ -98,18 +103,22 @@ export async function GET() {
         }
 
         const timelines = await prisma.timeline.findMany({
-            where: {
-                userId: session.user.id,
+            where: featured ? {
+                isFeatured: true
+            } : {
+                userId: session?.user?.id,
             },
             select: {
                 id: true,
                 title: true,
                 description: true,
+                category: true,
+                tags: true,
                 isFeatured: true,
                 createdAt: true,
                 _count: {
                     select: {
-                        timelineEvents: true, // 🔥 event count
+                        timelineEvents: true,
                     },
                 },
             },

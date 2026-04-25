@@ -2,16 +2,19 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Logo from "@/components/Logo";
 
-export default function SignupPage() {
+export default function LoginPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const callbackUrl = searchParams.get("callbackUrl") || "/";
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -19,18 +22,6 @@ export default function SignupPage() {
         setError("");
 
         try {
-            const res = await fetch("/api/auth/signup", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email, password }),
-            });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.error || "Something went wrong");
-            }
-
             const result = await signIn("credentials", {
                 email,
                 password,
@@ -38,14 +29,13 @@ export default function SignupPage() {
             });
 
             if (result?.error) {
-                setError("Account created, but failed to log in automatically. Please try logging in.");
-                router.push("/login");
+                setError("Invalid email or password");
             } else {
-                router.push("/");
+                router.push(callbackUrl);
                 router.refresh();
             }
         } catch (err: any) {
-            setError(err.message);
+            setError("Something went wrong. Please try again.");
         } finally {
             setIsLoading(false);
         }
@@ -54,23 +44,23 @@ export default function SignupPage() {
     return (
         <div className="min-h-screen flex items-center justify-center bg-background px-4 transition-colors duration-500">
             <div className="max-w-md w-full space-y-8 p-10 bg-card rounded-[2.5rem] shadow-2xl shadow-indigo-500/10 border border-foreground/5 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-32 h-32 bg-purple-500/5 rounded-full -ml-16 -mt-16 blur-2xl" />
-
+                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full -mr-16 -mt-16 blur-2xl" />
+                
                 <div className="text-center relative z-10">
                     <div className="mx-auto w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center text-white mb-8 shadow-xl shadow-indigo-500/20">
                         <Logo className="w-8 h-8" />
                     </div>
                     <h2 className="text-4xl font-black text-foreground tracking-tighter">
-                        Join the Journey
+                        Welcome Back
                     </h2>
                     <p className="mt-3 text-sm text-foreground/50 font-medium">
-                        Start creating your first timeline today.
+                        Continue your journey into history.
                     </p>
                 </div>
 
                 <form className="mt-10 space-y-6 relative z-10" onSubmit={handleSubmit}>
                     {error && (
-                        <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 text-xs rounded-2xl text-center font-black uppercase tracking-widest">
+                        <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 text-xs rounded-2xl text-center font-black uppercase tracking-widest animate-shake">
                             {error}
                         </div>
                     )}
@@ -78,7 +68,7 @@ export default function SignupPage() {
                     <div className="space-y-5">
                         <div>
                             <label className="block text-[10px] font-black uppercase tracking-widest text-foreground/30 mb-3 ml-1">
-                                Email address
+                                Email Address
                             </label>
                             <input
                                 type="email"
@@ -90,9 +80,14 @@ export default function SignupPage() {
                             />
                         </div>
                         <div>
-                            <label className="block text-[10px] font-black uppercase tracking-widest text-foreground/30 mb-3 ml-1">
-                                Password
-                            </label>
+                            <div className="flex justify-between items-center mb-3 ml-1">
+                                <label className="block text-[10px] font-black uppercase tracking-widest text-foreground/30">
+                                    Password
+                                </label>
+                                <a href="#" className="text-[10px] font-black text-indigo-500 hover:text-indigo-400 uppercase tracking-widest">
+                                    Forgot?
+                                </a>
+                            </div>
                             <input
                                 type="password"
                                 required
@@ -112,16 +107,16 @@ export default function SignupPage() {
                                 isLoading ? "opacity-70 cursor-not-allowed" : ""
                             }`}
                         >
-                            {isLoading ? "Enrolling..." : "Create Account"}
+                            {isLoading ? "Verifying..." : "Sign In"}
                         </button>
                     </div>
                 </form>
 
                 <div className="text-center pt-6 relative z-10">
                     <p className="text-sm text-foreground/40 font-medium">
-                        Already an explorer?{" "}
-                        <Link href="/login" className="font-black text-indigo-500 hover:text-indigo-400">
-                            Log In
+                        New explorer?{" "}
+                        <Link href="/signup" className="font-black text-indigo-500 hover:text-indigo-400">
+                            Create Account
                         </Link>
                     </p>
                 </div>

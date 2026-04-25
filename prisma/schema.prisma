@@ -29,6 +29,8 @@ model Timeline {
   id          String @id @default(cuid())
   title       String
   description String
+  category    String   @default("General")
+  tags        String[] @default([])
 
   isApproved Boolean  @default(false)
   isFeatured Boolean  @default(false)

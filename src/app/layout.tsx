@@ -31,15 +31,13 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${jetbrainsMono.variable} h-full`}
+      className={`${inter.variable} ${jetbrainsMono.variable} h-full dark`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full bg-gradient-to-b from-gray-50 to-white text-gray-800 antialiased">
-
-        {/* ✅ WRAP APP HERE */}
+      <body className="min-h-full antialiased transition-colors duration-300">
         <Providers>
           {children}
         </Providers>
-
       </body>
     </html>
   );
