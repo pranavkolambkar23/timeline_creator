@@ -11,8 +11,8 @@ export default function Home() {
     const { data: session } = useSession();
     const router = useRouter();
 
-    const [userTimelines, setUserTimelines] = useState([]);
-    const [featuredTimelines, setFeaturedTimelines] = useState([]);
+    const [userTimelines, setUserTimelines] = useState<any[]>([]);
+    const [featuredTimelines, setFeaturedTimelines] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
