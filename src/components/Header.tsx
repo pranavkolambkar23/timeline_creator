@@ -39,12 +39,20 @@ export default function Header() {
                         </button>
                     </div>
                 ) : (
-                    <button
-                        onClick={() => signIn()}
-                        className="bg-black text-white px-4 py-2 rounded"
-                    >
-                        Login
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => signIn()}
+                            className="text-sm font-medium text-slate-600 hover:text-slate-900"
+                        >
+                            Login
+                        </button>
+                        <a
+                            href="/signup"
+                            className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+                        >
+                            Sign Up
+                        </a>
+                    </div>
                 )}
             </div>
 
