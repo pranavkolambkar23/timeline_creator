@@ -49,6 +49,16 @@ export default function Header() {
 
                 {/* Right: Actions */}
                 <div className="flex items-center gap-4">
+                    {/* Admin Link */}
+                    {session?.user?.role === "ADMIN" && (
+                        <Link 
+                            href="/admin" 
+                            className="hidden md:flex items-center gap-2 px-4 py-2 bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all mr-2"
+                        >
+                            Admin
+                        </Link>
+                    )}
+
                     {/* Theme Toggle */}
                     <button 
                         onClick={toggleTheme}

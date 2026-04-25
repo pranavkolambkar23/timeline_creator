@@ -87,35 +87,46 @@ export async function POST(req: Request) {
 }
 
 
-// 📥 GET → Fetch logged-in user's timelines (CARD VIEW)
+// 📥 GET → Fetch timelines (with Admin support)
 export async function GET(req: Request) {
     try {
         const { searchParams } = new URL(req.url);
         const featured = searchParams.get("featured") === "true";
+        const adminAll = searchParams.get("adminAll") === "true";
 
         const session = await getServerSession(authOptions);
+        const isAdmin = session?.user?.role === "ADMIN";
 
-        if (!featured && (!session || !session.user?.id)) {
-            return NextResponse.json(
-                { error: "Unauthorized" },
-                { status: 401 }
-            );
+        // Logic for fetching:
+        // 1. Featured -> No auth required
+        // 2. adminAll -> Requires ADMIN role
+        // 3. User timelines -> Requires logged in user
+        
+        let whereClause = {};
+
+        if (featured) {
+            whereClause = { isFeatured: true };
+        } else if (adminAll) {
+            if (!isAdmin) {
+                return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+            }
+            // No filter for adminAll, fetch everything
+            whereClause = {};
+        } else {
+            if (!session || !session.user?.id) {
+                return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            }
+            whereClause = { userId: session.user.id };
         }
 
         const timelines = await prisma.timeline.findMany({
-            where: featured ? {
-                isFeatured: true
-            } : {
-                userId: session?.user?.id,
-            },
-            select: {
-                id: true,
-                title: true,
-                description: true,
-                category: true,
-                tags: true,
-                isFeatured: true,
-                createdAt: true,
+            where: whereClause,
+            include: {
+                user: {
+                    select: {
+                        email: true
+                    }
+                },
                 _count: {
                     select: {
                         timelineEvents: true,
