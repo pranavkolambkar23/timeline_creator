@@ -81,3 +81,67 @@ export async function PATCH(
         return NextResponse.json({ error: "Failed to update timeline" }, { status: 500 });
     }
 }
+
+// 🔐 PUT → Full Update (Title, Desc, Events, Spatial Data)
+export async function PUT(
+    req: Request,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    try {
+        const session = await getServerSession(authOptions);
+        const { id } = await params;
+
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const body = await req.json();
+        const { title, description, category, tags, events } = body;
+
+        // 1. Check ownership (Strict: ONLY creator can edit)
+        const existing = await prisma.timeline.findUnique({
+            where: { id },
+            select: { userId: true }
+        });
+
+        if (!existing || existing.userId !== session.user.id) {
+            return NextResponse.json({ error: "Forbidden. Only the creator can edit this narrative." }, { status: 403 });
+        }
+
+        // 2. Perform update in a transaction (timeout raised to 30s for large GeoJSON payloads)
+        const updatedTimeline = await prisma.$transaction(async (tx) => {
+            // Delete existing events first
+            await tx.timelineEvent.deleteMany({
+                where: { timelineId: id }
+            });
+
+            // Then update timeline metadata + create fresh events
+            return await tx.timeline.update({
+                where: { id },
+                data: {
+                    title,
+                    description,
+                    category,
+                    tags,
+                    timelineEvents: {
+                        create: events.map((event: any) => ({
+                            title: event.title,
+                            description: event.description,
+                            date: new Date(event.date),
+                            locationData: event.locationData ?? null,
+                        }))
+                    }
+                },
+                include: {
+                    timelineEvents: true
+                }
+            });
+        }, { timeout: 30000 }); // ← 30 second timeout for large spatial payloads
+
+
+        return NextResponse.json(updatedTimeline);
+    } catch (error) {
+        console.error("PUT TIMELINE ERROR:", error);
+        return NextResponse.json({ error: "Failed to update timeline" }, { status: 500 });
+    }
+}

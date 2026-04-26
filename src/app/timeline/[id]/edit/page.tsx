@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter, useParams } from "next/navigation";
 import Header from "@/components/Header";
 import MasterMapEditor from "@/components/timeline/MasterMapEditor";
 
 type EventType = {
+    id?: string;
     title: string;
     description: string;
     date: string;
@@ -32,13 +33,16 @@ function formatDateDisplay(dateStr: string): string {
     return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase();
 }
 
-export default function CreateTimeline() {
+export default function EditTimeline() {
     const router = useRouter();
+    const params = useParams();
+    const id = params?.id as string;
 
     const [title, setTitle]       = useState("");
     const [description, setDescription] = useState("");
     const [category, setCategory] = useState("General");
     const [tagsInput, setTagsInput] = useState("");
+    const [loading, setLoading]   = useState(true);
     const [saving, setSaving]     = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
@@ -49,6 +53,69 @@ export default function CreateTimeline() {
 
     const featureNamesRef = useRef<Record<string, string>>({});
     const eventRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+    // ─── Fetch ────────────────────────────────────────────────────────────────
+    useEffect(() => {
+        const fetchTimeline = async () => {
+            try {
+                const res = await fetch(`/api/timeline/${id}`);
+                if (!res.ok) throw new Error("Fetch failed");
+                const data = await res.json();
+
+                setTitle(data.title);
+                setDescription(data.description);
+                setCategory(data.category);
+                setTagsInput(data.tags.join(", "));
+
+                const featuresByCoordKey: Record<string, { feature: any; stableId: string }> = {};
+
+                const reconstructedEvents = data.timelineEvents.map((e: any) => {
+                    const linkedIds: string[] = [];
+
+                    // Normalise bare Feature OR FeatureCollection OR null
+                    const rawFeatures: any[] = !e.locationData
+                        ? []
+                        : e.locationData.type === 'FeatureCollection' && Array.isArray(e.locationData.features)
+                        ? e.locationData.features
+                        : e.locationData.type === 'Feature'
+                        ? [e.locationData]
+                        : [];
+
+                    rawFeatures.forEach((feature: any) => {
+                        const key = coordKey(feature.geometry);
+                        if (!featuresByCoordKey[key]) {
+                            const stableId = feature.id || `f_${Object.keys(featuresByCoordKey).length}_${Math.random().toString(36).slice(2, 7)}`;
+                            if (!feature.properties) feature.properties = {};
+                            const name = feature.properties.name
+                                || feature.properties.type
+                                || `${feature.geometry.type} · ${e.title.slice(0, 12)}`;
+                            feature.properties.name = name;
+                            featureNamesRef.current[stableId] = name;
+                            featuresByCoordKey[key] = { feature: { ...feature, id: stableId }, stableId };
+                        }
+                        linkedIds.push(featuresByCoordKey[key].stableId);
+                    });
+
+                    return {
+                        id: e.id,
+                        title: e.title,
+                        description: e.description,
+                        date: new Date(e.date).toISOString().split('T')[0],
+                        linkedFeatureIds: linkedIds,
+                    };
+                });
+
+                const allFeatures = Object.values(featuresByCoordKey).map(v => v.feature);
+                setMasterGeoJson({ type: 'FeatureCollection', features: allFeatures });
+                setEvents(reconstructedEvents);
+            } catch {
+                router.push("/admin");
+            } finally {
+                setLoading(false);
+            }
+        };
+        if (id) fetchTimeline();
+    }, [id, router]);
 
     // ─── Map ──────────────────────────────────────────────────────────────────
     const handleMapChange = useCallback((newData: any) => {
@@ -128,10 +195,6 @@ export default function CreateTimeline() {
 
     // ─── Submit ───────────────────────────────────────────────────────────────
     const handleSubmit = async () => {
-        if (!title.trim() || !description.trim()) {
-            alert("Please provide a title and description");
-            return;
-        }
         for (const [i, ev] of events.entries()) {
             if (!ev.date || isNaN(new Date(ev.date).getTime())) {
                 alert(`Event "${ev.title || `#${i + 1}`}" is missing a valid date.`);
@@ -148,8 +211,8 @@ export default function CreateTimeline() {
                     return linked.length > 0 ? { type: 'FeatureCollection', features: linked } : null;
                 })(),
             }));
-            const res = await fetch("/api/timeline", {
-                method: 'POST',
+            const res = await fetch(`/api/timeline/${id}`, {
+                method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     title, description, category,
@@ -160,7 +223,7 @@ export default function CreateTimeline() {
             if (!res.ok) throw new Error('Save failed');
             setSaveStatus('saved');
             setTimeout(() => {
-                router.push("/");
+                router.push(`/timeline/${id}`);
                 router.refresh();
             }, 800);
         } catch {
@@ -180,6 +243,20 @@ export default function CreateTimeline() {
         const bL = activeLinkedIds.includes(b.id) ? 0 : 1;
         return aL - bL;
     });
+
+    // ─── Loading ──────────────────────────────────────────────────────────────
+    if (loading) return (
+        <div className="h-screen bg-[#080808] flex flex-col items-center justify-center gap-6">
+            <div className="relative">
+                <div className="w-12 h-12 border border-indigo-500/30 rounded-full animate-ping absolute inset-0" />
+                <div className="w-12 h-12 border-t border-indigo-500 rounded-full animate-spin" />
+            </div>
+            <div className="text-center">
+                <p className="text-[9px] font-mono uppercase tracking-[0.4em] text-indigo-400/60">Loading Timeline Studio</p>
+                <p className="text-[8px] font-mono text-white/20 mt-1 tracking-widest">ID: {id}</p>
+            </div>
+        </div>
+    );
 
     const totalFeatures = masterGeoJson.features.length;
     const linkedAcrossAll = new Set(events.flatMap(e => e.linkedFeatureIds)).size;
@@ -285,7 +362,7 @@ export default function CreateTimeline() {
                     <div className="flex-shrink-0 flex items-center justify-between px-6 py-3 border-b border-white/[0.06] bg-[#080808]">
                         <div>
                             <div className="flex items-center gap-2">
-                                <span className="text-[8px] font-mono uppercase tracking-[0.4em] text-indigo-400/50">Timeline Creator</span>
+                                <span className="text-[8px] font-mono uppercase tracking-[0.4em] text-indigo-400/50">Timeline Studio</span>
                                 <span className="w-1 h-1 rounded-full bg-white/10" />
                                 <span className="text-[8px] font-mono text-white/20">{events.length} events</span>
                             </div>
@@ -307,7 +384,7 @@ export default function CreateTimeline() {
                             )}
                             {saveStatus === 'saved' && <span>✓</span>}
                             {saveStatus === 'error' && <span>✗</span>}
-                            {saveStatus === 'saving' ? 'Archiving' : saveStatus === 'saved' ? 'Archived' : saveStatus === 'error' ? 'Failed' : 'Publish'}
+                            {saveStatus === 'saving' ? 'Archiving' : saveStatus === 'saved' ? 'Archived' : saveStatus === 'error' ? 'Failed' : 'Archive'}
                         </button>
                     </div>
 

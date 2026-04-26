@@ -61,6 +61,7 @@ export async function POST(req: Request) {
                         description: event.description,
                         date: new Date(event.date),
                         displayDate: event.displayDate || null,
+                        locationData: event.locationData || null,
                     })),
                 },
             },

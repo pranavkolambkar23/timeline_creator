@@ -11,9 +11,7 @@
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
-    "@mapbox/mapbox-gl-draw": "^1.5.1",
     "@prisma/client": "^6.19.3",
-    "@types/mapbox__mapbox-gl-draw": "^1.4.9",
     "bcrypt": "^6.0.0",
     "maplibre-gl": "^5.24.0",
     "next": "16.2.2",
@@ -21,7 +19,8 @@
     "prisma": "^6.19.3",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "react-map-gl": "^8.1.1"
+    "react-map-gl": "^8.1.1",
+    "terra-draw": "^1.28.8"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

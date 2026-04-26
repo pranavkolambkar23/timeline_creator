@@ -124,6 +124,7 @@ export default async function TimelinePage({
                     <AdminControls 
                         timelineId={timeline.id} 
                         initialIsFeatured={timeline.isFeatured} 
+                        creatorId={timeline.userId}
                     />
                 )}
             </main>

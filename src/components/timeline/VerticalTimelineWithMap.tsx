@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import InteractiveMap from "./InteractiveMap";
 
 interface VerticalTimelineWithMapProps {
@@ -10,13 +10,6 @@ interface VerticalTimelineWithMapProps {
 export default function VerticalTimelineWithMap({ events }: VerticalTimelineWithMapProps) {
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
 
-  // Automatically select the first event on load
-  useEffect(() => {
-    if (events.length > 0 && !activeEventId) {
-      setActiveEventId(events[0].id);
-    }
-  }, [events, activeEventId]);
-
   return (
     <div className="w-full flex flex-col lg:flex-row h-[800px] border-y border-foreground/5 bg-background">
       {/* Left Pane: Vertical Timeline */}
@@ -25,7 +18,7 @@ export default function VerticalTimelineWithMap({ events }: VerticalTimelineWith
           {/* Vertical Track Line */}
           <div className="absolute left-[3.25rem] md:left-[4.25rem] top-0 bottom-0 w-[2px] bg-gradient-to-b from-transparent via-foreground/10 to-transparent" />
           
-          {events.map((event, index) => {
+          {events.map((event) => {
             const isActive = activeEventId === event.id;
             
             return (

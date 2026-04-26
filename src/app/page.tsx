@@ -66,13 +66,13 @@ export default function Home() {
                                 onClick={handleCreateTimeline}
                                 className="px-10 py-5 bg-indigo-600 text-white rounded-[2rem] font-black uppercase tracking-widest text-xs hover:bg-indigo-700 transition-all shadow-2xl shadow-indigo-500/20 active:scale-95"
                             >
-                                Start Building
+                                Create Timeline
                             </button>
                             <a
                                 href="#explore"
                                 className="px-10 py-5 bg-foreground/5 text-foreground border border-foreground/10 rounded-[2rem] font-black uppercase tracking-widest text-xs hover:bg-foreground/10 transition-all active:scale-95"
                             >
-                                Explore Gallery
+                                Explore Timelines
                             </a>
                         </div>
                     </div>

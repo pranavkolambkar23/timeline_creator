@@ -256,7 +256,7 @@ export default function FullMapView({ events }: FullMapViewProps) {
             paint={({
               'line-color': '#38bdf8',
               'line-width': hasSelection ? ['case', isTargetEvent, 5, 2] : 3,
-              'line-dasharray': [2, 2],
+              'line-dasharray': ['literal', [2, 2]],
               'line-opacity': hasSelection ? ['case', isTargetEvent, 1, 0.3] : 0.8
             } as any)}
           />
