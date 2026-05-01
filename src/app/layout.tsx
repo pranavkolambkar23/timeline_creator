@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/react"
 import "./globals.css";
 
 import Providers from "./providers"; // ✅ ADD THIS
@@ -37,6 +38,7 @@ export default function RootLayout({
       <body className="min-h-full antialiased transition-colors duration-300">
         <Providers>
           {children}
+          <Analytics />
         </Providers>
       </body>
     </html>
