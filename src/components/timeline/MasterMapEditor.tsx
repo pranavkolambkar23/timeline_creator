@@ -1,8 +1,10 @@
 "use client";
 
-import { useRef, useState, useCallback, memo } from 'react';
+import { useRef, useState, useCallback, memo, useMemo } from 'react';
 import Map, { NavigationControl, MapRef, Source, Layer } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import MapSearchBar from './MapSearchBar';
+import BaseMapSwitcher, { MapStyleType, getMapStyle } from './BaseMapSwitcher';
 
 type DrawMode = 'select' | 'point' | 'linestring' | 'polygon' | 'delete';
 
@@ -39,6 +41,7 @@ function toGeoJson(list: StoredFeature[]) {
 function MasterMapEditor({ initialData, onChange, onDeleteFeature, selectedFeatureId }: MasterMapEditorProps) {
   const mapRef = useRef<MapRef>(null);
   const [activeTool, setActiveTool] = useState<DrawMode>('select');
+  const [mapStyleType, setMapStyleType] = useState<MapStyleType>('dark');
 
   const [features, setFeatures] = useState<StoredFeature[]>(() => {
     if (!initialData?.features) return [];
@@ -53,7 +56,7 @@ function MasterMapEditor({ initialData, onChange, onDeleteFeature, selectedFeatu
   const [wip, setWip] = useState<[number, number][]>([]);
 
   const STADIA_KEY = process.env.NEXT_PUBLIC_STADIA_MAPS_KEY;
-  const mapStyle = `https://tiles.stadiamaps.com/styles/alidade_smooth_dark.json?api_key=${STADIA_KEY}`;
+  const mapStyle = useMemo(() => getMapStyle(mapStyleType, STADIA_KEY), [mapStyleType, STADIA_KEY]);
 
   // emit is always called OUTSIDE a setState updater — never inside one.
   // Calling onChange (which does setMasterGeoJson in the parent) inside a
@@ -237,6 +240,8 @@ function MasterMapEditor({ initialData, onChange, onDeleteFeature, selectedFeatu
         doubleClickZoom={false}
         onLoad={onMapLoad}
       >
+        <MapSearchBar />
+        <BaseMapSwitcher currentStyle={mapStyleType} onStyleChange={setMapStyleType} />
         <NavigationControl position="bottom-right" />
 
         <Source id="draw" type="geojson" data={wipGeoJson}>

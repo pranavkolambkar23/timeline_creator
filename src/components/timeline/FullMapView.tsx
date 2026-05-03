@@ -3,6 +3,8 @@
 import { useMemo, useState, useRef, useCallback } from 'react';
 import Map, { Source, Layer, NavigationControl, Popup, MapRef } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import MapSearchBar from './MapSearchBar';
+import BaseMapSwitcher, { MapStyleType, getMapStyle } from './BaseMapSwitcher';
 
 interface FullMapViewProps {
   events: any[];
@@ -19,9 +21,10 @@ export default function FullMapView({ events }: FullMapViewProps) {
     eventsWithLocation.map(e => e.id)
   );
   const [isLayerPanelOpen, setIsLayerPanelOpen] = useState(true);
+  const [mapStyleType, setMapStyleType] = useState<MapStyleType>('dark');
 
   const STADIA_KEY = process.env.NEXT_PUBLIC_STADIA_MAPS_KEY;
-  const mapStyle = `https://tiles.stadiamaps.com/styles/alidade_smooth_dark.json?api_key=${STADIA_KEY}`;
+  const mapStyle = useMemo(() => getMapStyle(mapStyleType, STADIA_KEY), [mapStyleType, STADIA_KEY]);
 
   const geoJsonData = useMemo<any>(() => {
     const features: any[] = [];
@@ -220,6 +223,8 @@ export default function FullMapView({ events }: FullMapViewProps) {
         cursor={cursor}
         scrollZoom={true}
       >
+        <MapSearchBar />
+        <BaseMapSwitcher currentStyle={mapStyleType} onStyleChange={setMapStyleType} />
         <NavigationControl position="bottom-right" style={{ marginRight: '16px', marginBottom: '16px' }} />
 
         {/* Polygons */}

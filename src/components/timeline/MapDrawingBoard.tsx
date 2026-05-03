@@ -1,8 +1,10 @@
 "use client";
 
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useMemo } from 'react';
 import Map, { NavigationControl, Source, Layer } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import MapSearchBar from './MapSearchBar';
+import BaseMapSwitcher, { MapStyleType, getMapStyle } from './BaseMapSwitcher';
 
 type DrawMode = 'select' | 'point' | 'linestring' | 'polygon';
 
@@ -35,8 +37,9 @@ export default function MapDrawingBoard({ initialData, onChange }: MapDrawingBoa
   });
   const [wip, setWip] = useState<[number, number][]>([]);
 
+  const [mapStyleType, setMapStyleType] = useState<MapStyleType>('dark');
   const STADIA_KEY = process.env.NEXT_PUBLIC_STADIA_MAPS_KEY;
-  const mapStyle = `https://tiles.stadiamaps.com/styles/alidade_smooth_dark.json?api_key=${STADIA_KEY}`;
+  const mapStyle = useMemo(() => getMapStyle(mapStyleType, STADIA_KEY), [mapStyleType, STADIA_KEY]);
 
   const emit = useCallback((next: StoredFeature[]) => {
     onChange({
@@ -140,6 +143,8 @@ export default function MapDrawingBoard({ initialData, onChange }: MapDrawingBoa
         onDblClick={onMapDblClick}
         doubleClickZoom={false}
       >
+        <MapSearchBar />
+        <BaseMapSwitcher currentStyle={mapStyleType} onStyleChange={setMapStyleType} />
         <NavigationControl position="bottom-right" />
 
         <Source id="draw" type="geojson" data={allGeoJson}>

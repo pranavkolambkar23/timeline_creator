@@ -1,8 +1,10 @@
 "use client";
 
-import { useMemo, useRef, useEffect } from 'react';
+import { useMemo, useRef, useEffect, useState } from 'react';
 import Map, { Source, Layer, NavigationControl, MapRef } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import MapSearchBar from './MapSearchBar';
+import BaseMapSwitcher, { MapStyleType, getMapStyle } from './BaseMapSwitcher';
 
 interface InteractiveMapProps {
   events: any[];
@@ -16,9 +18,10 @@ interface FeatureEntry {
 
 export default function InteractiveMap({ events, activeEventId }: InteractiveMapProps) {
   const mapRef = useRef<MapRef>(null);
+  const [mapStyleType, setMapStyleType] = useState<MapStyleType>('dark');
 
   const STADIA_KEY = process.env.NEXT_PUBLIC_STADIA_MAPS_KEY;
-  const mapStyle = `https://tiles.stadiamaps.com/styles/alidade_smooth_dark.json?api_key=${STADIA_KEY}`;
+  const mapStyle = useMemo(() => getMapStyle(mapStyleType, STADIA_KEY), [mapStyleType, STADIA_KEY]);
 
   const geoJsonData = useMemo<any>(() => {
     const featureMap: Record<string, FeatureEntry> = {};
@@ -111,8 +114,10 @@ export default function InteractiveMap({ events, activeEventId }: InteractiveMap
         mapStyle={mapStyle}
         style={{ width: '100%', height: '100%' }}
         attributionControl={false}
-        scrollZoom={false}
+        scrollZoom={true}
       >
+        <MapSearchBar />
+        <BaseMapSwitcher currentStyle={mapStyleType} onStyleChange={setMapStyleType} />
         <NavigationControl position="bottom-right" style={{ marginRight: '16px', marginBottom: '16px' }} />
 
         <Source id="timeline-features" type="geojson" data={geoJsonData}>
