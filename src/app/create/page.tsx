@@ -4,6 +4,7 @@ import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import MasterMapEditor from "@/components/timeline/MasterMapEditor";
+import ImportModal from "@/components/timeline/ImportModal";
 
 type EventType = {
     title: string;
@@ -46,6 +47,7 @@ export default function CreateTimeline() {
     const [events, setEvents]     = useState<EventType[]>([]);
     const [activeEventIndex, setActiveEventIndex] = useState<number | null>(null);
     const [highlightedFeatureId, setHighlightedFeatureId] = useState<string | null>(null);
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
     const featureNamesRef = useRef<Record<string, string>>({});
     const eventRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -124,6 +126,40 @@ export default function CreateTimeline() {
             if (prev === null || prev === index) return null;
             return prev > index ? prev - 1 : prev;
         });
+    };
+
+    // ─── Import ───────────────────────────────────────────────────────────────
+    const handleImport = (importedEvents: any[]) => {
+        const newFeatures: any[] = [];
+        const newEvents = importedEvents.map(ev => {
+            const linkedFeatureIds: string[] = [];
+            if (ev.coords) {
+                const featureId = Math.random().toString(36).slice(2, 10);
+                newFeatures.push({
+                    type: 'Feature',
+                    id: featureId,
+                    geometry: { type: 'Point', coordinates: ev.coords },
+                    properties: { name: ev.locationStr || ev.title }
+                });
+                linkedFeatureIds.push(featureId);
+                featureNamesRef.current[featureId] = ev.locationStr || ev.title;
+            }
+            return {
+                title: ev.title,
+                description: ev.description,
+                date: ev.date,
+                linkedFeatureIds
+            };
+        });
+
+        if (newFeatures.length > 0) {
+            setMasterGeoJson((prev: any) => ({
+                ...prev,
+                features: [...prev.features, ...newFeatures]
+            }));
+        }
+
+        setEvents((prev) => [...prev, ...newEvents]);
     };
 
     // ─── Submit ───────────────────────────────────────────────────────────────
@@ -290,8 +326,15 @@ export default function CreateTimeline() {
                                 <span className="text-[8px] font-mono text-white/20">{events.length} events</span>
                             </div>
                         </div>
-                        <button
-                            onClick={handleSubmit}
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => setIsImportModalOpen(true)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/20 text-[10px] font-mono text-white/60 transition-all active:scale-95"
+                            >
+                                <span>🪄 Import Data</span>
+                            </button>
+                            <button
+                                onClick={handleSubmit}
                             disabled={saving}
                             className={`relative flex items-center gap-2 px-5 py-2 rounded-lg text-[9px] font-mono uppercase tracking-[0.25em] transition-all duration-200 border
                                 ${saveStatus === 'saved'
@@ -309,6 +352,7 @@ export default function CreateTimeline() {
                             {saveStatus === 'error' && <span>✗</span>}
                             {saveStatus === 'saving' ? 'Archiving' : saveStatus === 'saved' ? 'Archived' : saveStatus === 'error' ? 'Failed' : 'Publish'}
                         </button>
+                        </div>
                     </div>
 
                     {/* Scrollable body */}
@@ -609,6 +653,12 @@ export default function CreateTimeline() {
                     </div>
                 </div>
             </div>
+            
+            <ImportModal 
+                isOpen={isImportModalOpen} 
+                onClose={() => setIsImportModalOpen(false)} 
+                onImport={handleImport} 
+            />
         </div>
     );
 }

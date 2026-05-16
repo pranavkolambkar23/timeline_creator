@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Header from "@/components/Header";
 import MasterMapEditor from "@/components/timeline/MasterMapEditor";
+import ImportModal from "@/components/timeline/ImportModal";
 
 type EventType = {
     id?: string;
@@ -50,6 +51,8 @@ export default function EditTimeline() {
     const [events, setEvents]     = useState<EventType[]>([]);
     const [activeEventIndex, setActiveEventIndex] = useState<number | null>(null);
     const [highlightedFeatureId, setHighlightedFeatureId] = useState<string | null>(null);
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const featureNamesRef = useRef<Record<string, string>>({});
     const eventRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -191,6 +194,55 @@ export default function EditTimeline() {
             if (prev === null || prev === index) return null;
             return prev > index ? prev - 1 : prev;
         });
+    };
+
+    // ─── Import ───────────────────────────────────────────────────────────────
+    const handleImport = (importedEvents: any[]) => {
+        const newFeatures: any[] = [];
+        const newEvents = importedEvents.map(ev => {
+            const linkedFeatureIds: string[] = [];
+            if (ev.coords) {
+                const featureId = Math.random().toString(36).slice(2, 10);
+                newFeatures.push({
+                    type: 'Feature',
+                    id: featureId,
+                    geometry: { type: 'Point', coordinates: ev.coords },
+                    properties: { name: ev.locationStr || ev.title }
+                });
+                linkedFeatureIds.push(featureId);
+                featureNamesRef.current[featureId] = ev.locationStr || ev.title;
+            }
+            return {
+                title: ev.title,
+                description: ev.description,
+                date: ev.date,
+                linkedFeatureIds
+            };
+        });
+
+        if (newFeatures.length > 0) {
+            setMasterGeoJson((prev: any) => ({
+                ...prev,
+                features: [...prev.features, ...newFeatures]
+            }));
+        }
+
+        setEvents((prev) => [...prev, ...newEvents]);
+    };
+
+    // ─── Delete ───────────────────────────────────────────────────────────────
+    const handleDelete = async () => {
+        if (!confirm("Are you sure you want to completely delete this timeline? This cannot be undone.")) return;
+        setIsDeleting(true);
+        try {
+            const res = await fetch(`/api/timeline/${id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error("Delete failed");
+            router.push("/");
+            router.refresh();
+        } catch {
+            alert("Failed to delete timeline");
+            setIsDeleting(false);
+        }
     };
 
     // ─── Submit ───────────────────────────────────────────────────────────────
@@ -367,8 +419,25 @@ export default function EditTimeline() {
                                 <span className="text-[8px] font-mono text-white/20">{events.length} events</span>
                             </div>
                         </div>
-                        <button
-                            onClick={handleSubmit}
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={handleDelete}
+                                disabled={isDeleting}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-rose-500/20 bg-rose-500/10 hover:bg-rose-500/20 hover:border-rose-500/40 text-[10px] font-mono text-rose-400 transition-all active:scale-95 disabled:opacity-50"
+                                title="Delete Timeline"
+                            >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                            <button
+                                onClick={() => setIsImportModalOpen(true)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/20 text-[10px] font-mono text-white/60 transition-all active:scale-95"
+                            >
+                                <span>🪄 Import Data</span>
+                            </button>
+                            <button
+                                onClick={handleSubmit}
                             disabled={saving}
                             className={`relative flex items-center gap-2 px-5 py-2 rounded-lg text-[9px] font-mono uppercase tracking-[0.25em] transition-all duration-200 border
                                 ${saveStatus === 'saved'
@@ -386,6 +455,7 @@ export default function EditTimeline() {
                             {saveStatus === 'error' && <span>✗</span>}
                             {saveStatus === 'saving' ? 'Archiving' : saveStatus === 'saved' ? 'Archived' : saveStatus === 'error' ? 'Failed' : 'Archive'}
                         </button>
+                        </div>
                     </div>
 
                     {/* Scrollable body */}
@@ -686,6 +756,12 @@ export default function EditTimeline() {
                     </div>
                 </div>
             </div>
+            
+            <ImportModal 
+                isOpen={isImportModalOpen} 
+                onClose={() => setIsImportModalOpen(false)} 
+                onImport={handleImport} 
+            />
         </div>
     );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useCallback, memo, useMemo } from 'react';
+import { useRef, useState, useCallback, memo, useMemo, useEffect } from 'react';
 import Map, { NavigationControl, MapRef, Source, Layer } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import MapSearchBar from './MapSearchBar';
@@ -52,6 +52,17 @@ function MasterMapEditor({ initialData, onChange, onDeleteFeature, selectedFeatu
       props: f.properties ?? {},
     }));
   });
+
+  useEffect(() => {
+    if (initialData?.features) {
+      setFeatures(initialData.features.map((f: any) => ({
+        id: f.id ?? uid(),
+        geoType: f.geometry.type,
+        coords: f.geometry.coordinates,
+        props: f.properties ?? {},
+      })));
+    }
+  }, [initialData]);
 
   const [wip, setWip] = useState<[number, number][]>([]);
 

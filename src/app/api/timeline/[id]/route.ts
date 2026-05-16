@@ -145,3 +145,41 @@ export async function PUT(
         return NextResponse.json({ error: "Failed to update timeline" }, { status: 500 });
     }
 }
+
+// 🔐 DELETE → Delete a Timeline
+export async function DELETE(
+    req: Request,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    try {
+        const session = await getServerSession(authOptions);
+        const { id } = await params;
+
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        // Check ownership (Strict: ONLY creator can delete, or Admin)
+        const existing = await prisma.timeline.findUnique({
+            where: { id },
+            select: { userId: true }
+        });
+
+        if (!existing) {
+            return NextResponse.json({ error: "Timeline not found" }, { status: 404 });
+        }
+
+        if (existing.userId !== session.user.id && session.user.role !== "ADMIN") {
+            return NextResponse.json({ error: "Forbidden. Only the creator or admin can delete." }, { status: 403 });
+        }
+
+        await prisma.timeline.delete({
+            where: { id }
+        });
+
+        return NextResponse.json({ message: "Timeline deleted successfully" });
+    } catch (error) {
+        console.error("DELETE TIMELINE ERROR:", error);
+        return NextResponse.json({ error: "Failed to delete timeline" }, { status: 500 });
+    }
+}
