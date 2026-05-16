@@ -72,7 +72,7 @@ export default function ImportModal({ isOpen, onClose, onImport }: ImportModalPr
                 description: String(description),
                 date,
                 locationStr: String(locationStr),
-                status: 'pending'
+                status: 'pending' as const
             };
         }).filter(e => e.title || e.date || e.locationStr); // Filter empty rows
 
