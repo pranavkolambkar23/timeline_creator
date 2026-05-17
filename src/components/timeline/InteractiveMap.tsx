@@ -166,6 +166,9 @@ export default function InteractiveMap({ events, activeEventId }: InteractiveMap
             id="points-core"
             type="circle"
             filter={['==', ['geometry-type'], 'Point']}
+            layout={{
+              'circle-sort-key': ['case', isActive, 1, 0]
+            } as any}
             paint={{
               'circle-radius': ['case', isActive, 7, 4],
               'circle-color': ['case', isActive, '#c084fc', '#6b7280'],

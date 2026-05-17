@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import MasterMapEditor from "@/components/timeline/MasterMapEditor";
 import ImportModal from "@/components/timeline/ImportModal";
+import AiImportModal from "@/components/timeline/AiImportModal";
 
 type EventType = {
     title: string;
@@ -48,6 +49,7 @@ export default function CreateTimeline() {
     const [activeEventIndex, setActiveEventIndex] = useState<number | null>(null);
     const [highlightedFeatureId, setHighlightedFeatureId] = useState<string | null>(null);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
     const featureNamesRef = useRef<Record<string, string>>({});
     const eventRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -131,18 +133,40 @@ export default function CreateTimeline() {
     // ─── Import ───────────────────────────────────────────────────────────────
     const handleImport = (importedEvents: any[]) => {
         const newFeatures: any[] = [];
+        const existingFeatures = masterGeoJson.features || [];
+        
         const newEvents = importedEvents.map(ev => {
             const linkedFeatureIds: string[] = [];
             if (ev.coords) {
-                const featureId = Math.random().toString(36).slice(2, 10);
-                newFeatures.push({
-                    type: 'Feature',
-                    id: featureId,
-                    geometry: { type: 'Point', coordinates: ev.coords },
-                    properties: { name: ev.locationStr || ev.title }
-                });
-                linkedFeatureIds.push(featureId);
-                featureNamesRef.current[featureId] = ev.locationStr || ev.title;
+                // Check if feature with exact same coords already exists
+                let matchedFeature = existingFeatures.find((f: any) => 
+                    f.geometry.type === 'Point' && 
+                    f.geometry.coordinates[0] === ev.coords[0] && 
+                    f.geometry.coordinates[1] === ev.coords[1]
+                );
+                
+                if (!matchedFeature) {
+                    matchedFeature = newFeatures.find((f: any) => 
+                        f.geometry.type === 'Point' && 
+                        f.geometry.coordinates[0] === ev.coords[0] && 
+                        f.geometry.coordinates[1] === ev.coords[1]
+                    );
+                }
+
+                if (matchedFeature) {
+                    linkedFeatureIds.push(matchedFeature.id);
+                } else {
+                    const featureId = Math.random().toString(36).slice(2, 10);
+                    const newFeat = {
+                        type: 'Feature',
+                        id: featureId,
+                        geometry: { type: 'Point', coordinates: ev.coords },
+                        properties: { name: ev.locationStr || ev.title }
+                    };
+                    newFeatures.push(newFeat);
+                    linkedFeatureIds.push(featureId);
+                    featureNamesRef.current[featureId] = ev.locationStr || ev.title;
+                }
             }
             return {
                 title: ev.title,
@@ -159,7 +183,7 @@ export default function CreateTimeline() {
             }));
         }
 
-        setEvents((prev) => [...prev, ...newEvents]);
+        setEvents((prevEvents) => [...prevEvents, ...newEvents]);
     };
 
     // ─── Submit ───────────────────────────────────────────────────────────────
@@ -326,7 +350,13 @@ export default function CreateTimeline() {
                                 <span className="text-[8px] font-mono text-white/20">{events.length} events</span>
                             </div>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setIsAiModalOpen(true)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-500/20 bg-amber-500/10 hover:bg-amber-500/20 hover:border-amber-500/40 text-[10px] font-mono text-amber-400 transition-all active:scale-95"
+                            >
+                                <span>✨ AI Assistant</span>
+                            </button>
                             <button
                                 onClick={() => setIsImportModalOpen(true)}
                                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/20 text-[10px] font-mono text-white/60 transition-all active:scale-95"
@@ -657,6 +687,11 @@ export default function CreateTimeline() {
             <ImportModal 
                 isOpen={isImportModalOpen} 
                 onClose={() => setIsImportModalOpen(false)} 
+                onImport={handleImport} 
+            />
+            <AiImportModal 
+                isOpen={isAiModalOpen} 
+                onClose={() => setIsAiModalOpen(false)} 
                 onImport={handleImport} 
             />
         </div>
