@@ -1,0 +1,56 @@
+/* Custom driver.js styling to match dark theme */
+.driverjs-theme {
+    background-color: #0a0a0a !important;
+    color: white !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+    font-family: var(--font-sans), sans-serif !important;
+}
+
+.driverjs-theme .driver-popover-title {
+    font-size: 18px !important;
+    font-weight: 900 !important;
+    color: white !important;
+    margin-bottom: 8px !important;
+}
+
+.driverjs-theme .driver-popover-description {
+    font-size: 13px !important;
+    color: rgba(255, 255, 255, 0.7) !important;
+    line-height: 1.5 !important;
+}
+
+.driverjs-theme .driver-popover-footer button {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    color: white !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 8px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.1em !important;
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    text-shadow: none !important;
+    padding: 6px 12px !important;
+}
+
+.driverjs-theme .driver-popover-footer button:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.driverjs-theme .driver-popover-footer .driver-popover-next-btn {
+    background-color: #4f46e5 !important;
+    border-color: #4f46e5 !important;
+}
+
+.driverjs-theme .driver-popover-footer .driver-popover-next-btn:hover {
+    background-color: #4338ca !important;
+}
+
+/* Close button (x) */
+.driverjs-theme .driver-popover-close-btn {
+    color: rgba(255, 255, 255, 0.5) !important;
+}
+.driverjs-theme .driver-popover-close-btn:hover {
+    color: white !important;
+}

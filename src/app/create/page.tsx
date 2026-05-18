@@ -6,13 +6,8 @@ import Header from "@/components/Header";
 import MasterMapEditor from "@/components/timeline/MasterMapEditor";
 import ImportModal from "@/components/timeline/ImportModal";
 import AiImportModal from "@/components/timeline/AiImportModal";
-
-type EventType = {
-    title: string;
-    description: string;
-    date: string;
-    linkedFeatureIds: string[];
-};
+import { useTimelineStudio, EventType } from "@/hooks/useTimelineStudio";
+import StudioTour from "@/components/StudioTour";
 
 const CATEGORIES = ["General", "History", "Technology", "Science", "Art", "Sports"];
 
@@ -44,147 +39,17 @@ export default function CreateTimeline() {
     const [saving, setSaving]     = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
-    const [masterGeoJson, setMasterGeoJson] = useState<any>({ type: 'FeatureCollection', features: [] });
-    const [events, setEvents]     = useState<EventType[]>([]);
-    const [activeEventIndex, setActiveEventIndex] = useState<number | null>(null);
-    const [highlightedFeatureId, setHighlightedFeatureId] = useState<string | null>(null);
-    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-    const [isAiModalOpen, setIsAiModalOpen] = useState(false);
-
-    const featureNamesRef = useRef<Record<string, string>>({});
-    const eventRefs = useRef<(HTMLDivElement | null)[]>([]);
-
-    // ─── Map ──────────────────────────────────────────────────────────────────
-    const handleMapChange = useCallback((newData: any) => {
-        setMasterGeoJson(() => ({
-            ...newData,
-            features: newData.features.map((f: any) => ({
-                ...f,
-                properties: {
-                    ...(f.properties || {}),
-                    name: featureNamesRef.current[f.id] ?? f.properties?.name ?? '',
-                },
-            })),
-        }));
-    }, []);
-
-    const handleDeleteFeature = useCallback((featureId: string) => {
-        delete featureNamesRef.current[featureId];
-        setMasterGeoJson((prev: any) => ({
-            ...prev,
-            features: prev.features.filter((f: any) => f.id !== featureId),
-        }));
-        setEvents(prev => prev.map(ev => ({
-            ...ev,
-            linkedFeatureIds: ev.linkedFeatureIds.filter(fid => fid !== featureId),
-        })));
-    }, []);
-
-    const updateFeatureName = (featureId: string, newName: string) => {
-        featureNamesRef.current[featureId] = newName;
-        setMasterGeoJson((prev: any) => ({
-            ...prev,
-            features: prev.features.map((f: any) =>
-                f.id === featureId ? { ...f, properties: { ...f.properties, name: newName } } : f
-            ),
-        }));
-    };
-
-    // ─── Events ───────────────────────────────────────────────────────────────
-    const handleEventChange = (index: number, field: keyof EventType, value: string) => {
-        setEvents(prev => {
-            const next = [...prev];
-            (next[index] as any)[field] = value;
-            return next;
-        });
-    };
-
-    const toggleFeatureLink = (eventIndex: number, featureId: string) => {
-        setEvents(prev => {
-            const next = [...prev];
-            const ids = next[eventIndex].linkedFeatureIds;
-            next[eventIndex] = {
-                ...next[eventIndex],
-                linkedFeatureIds: ids.includes(featureId)
-                    ? ids.filter(i => i !== featureId)
-                    : [...ids, featureId],
-            };
-            return next;
-        });
-    };
-
-    const addEvent = () => {
-        const idx = events.length;
-        setEvents(prev => [...prev, { title: '', description: '', date: '', linkedFeatureIds: [] }]);
-        setActiveEventIndex(idx);
-        setTimeout(() => {
-            eventRefs.current[idx]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 100);
-    };
-
-    const removeEvent = (index: number) => {
-        setEvents(prev => prev.filter((_, i) => i !== index));
-        setActiveEventIndex(prev => {
-            if (prev === null || prev === index) return null;
-            return prev > index ? prev - 1 : prev;
-        });
-    };
-
-    // ─── Import ───────────────────────────────────────────────────────────────
-    const handleImport = (importedEvents: any[]) => {
-        const newFeatures: any[] = [];
-        const existingFeatures = masterGeoJson.features || [];
-        
-        const newEvents = importedEvents.map(ev => {
-            const linkedFeatureIds: string[] = [];
-            if (ev.coords) {
-                // Check if feature with exact same coords already exists
-                let matchedFeature = existingFeatures.find((f: any) => 
-                    f.geometry.type === 'Point' && 
-                    f.geometry.coordinates[0] === ev.coords[0] && 
-                    f.geometry.coordinates[1] === ev.coords[1]
-                );
-                
-                if (!matchedFeature) {
-                    matchedFeature = newFeatures.find((f: any) => 
-                        f.geometry.type === 'Point' && 
-                        f.geometry.coordinates[0] === ev.coords[0] && 
-                        f.geometry.coordinates[1] === ev.coords[1]
-                    );
-                }
-
-                if (matchedFeature) {
-                    linkedFeatureIds.push(matchedFeature.id);
-                } else {
-                    const featureId = Math.random().toString(36).slice(2, 10);
-                    const newFeat = {
-                        type: 'Feature',
-                        id: featureId,
-                        geometry: { type: 'Point', coordinates: ev.coords },
-                        properties: { name: ev.locationStr || ev.title }
-                    };
-                    newFeatures.push(newFeat);
-                    linkedFeatureIds.push(featureId);
-                    featureNamesRef.current[featureId] = ev.locationStr || ev.title;
-                }
-            }
-            return {
-                title: ev.title,
-                description: ev.description,
-                date: ev.date,
-                linkedFeatureIds
-            };
-        });
-
-        if (newFeatures.length > 0) {
-            setMasterGeoJson((prev: any) => ({
-                ...prev,
-                features: [...prev.features, ...newFeatures]
-            }));
-        }
-
-        setEvents((prevEvents) => [...prevEvents, ...newEvents]);
-    };
+    const {
+        events, setEvents,
+        masterGeoJson, setMasterGeoJson,
+        activeEventIndex, setActiveEventIndex,
+        highlightedFeatureId, setHighlightedFeatureId,
+        isImportModalOpen, setIsImportModalOpen,
+        isAiModalOpen, setIsAiModalOpen,
+        featureNamesRef, eventRefs,
+        handleEventChange, toggleFeatureLink, addEvent, removeEvent, handleImport,
+        handleMapChange, handleDeleteFeature, handleFeatureNameChange
+    } = useTimelineStudio();
 
     // ─── Submit ───────────────────────────────────────────────────────────────
     const handleSubmit = async () => {
@@ -247,13 +112,14 @@ export default function CreateTimeline() {
     return (
         <div className="h-screen flex flex-col bg-[#080808] text-white overflow-hidden">
             <Header />
+            <StudioTour />
 
             <div className="flex-grow flex overflow-hidden">
 
                 {/* ══════════════════════════════════════════════════════════════
                     LEFT — MAP CANVAS
                 ══════════════════════════════════════════════════════════════ */}
-                <div className="w-[55%] h-full flex flex-col relative border-r border-white/[0.06]">
+                <div id="tour-spatial-canvas" className="w-[55%] h-full flex flex-col relative border-r border-white/[0.06]">
 
                     {/* Map header bar */}
                     <div className="flex-shrink-0 flex items-center justify-between px-4 py-2.5 bg-[#080808] border-b border-white/[0.06]">
@@ -339,7 +205,7 @@ export default function CreateTimeline() {
                 {/* ══════════════════════════════════════════════════════════════
                     RIGHT — STUDIO PANEL
                 ══════════════════════════════════════════════════════════════ */}
-                <div className="w-[45%] h-full flex flex-col bg-[#060606]">
+                <div id="tour-narrative-panel" className="w-[45%] h-full flex flex-col bg-[#060606]">
 
                     {/* Top bar */}
                     <div className="flex-shrink-0 flex items-center justify-between px-6 py-3 border-b border-white/[0.06] bg-[#080808]">
@@ -352,12 +218,14 @@ export default function CreateTimeline() {
                         </div>
                         <div className="flex items-center gap-2">
                             <button
+                                id="tour-ai-import"
                                 onClick={() => setIsAiModalOpen(true)}
                                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-500/20 bg-amber-500/10 hover:bg-amber-500/20 hover:border-amber-500/40 text-[10px] font-mono text-amber-400 transition-all active:scale-95"
                             >
                                 <span>✨ AI Assistant</span>
                             </button>
                             <button
+                                id="tour-manual-import"
                                 onClick={() => setIsImportModalOpen(true)}
                                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/20 text-[10px] font-mono text-white/60 transition-all active:scale-95"
                             >
@@ -458,7 +326,7 @@ export default function CreateTimeline() {
                                                     className="flex-grow bg-transparent text-[10px] font-mono text-white/60 outline-none placeholder:text-white/15 min-w-0"
                                                     value={f.properties?.name || ''}
                                                     placeholder="name this layer…"
-                                                    onChange={e => updateFeatureName(f.id, e.target.value)}
+                                                    onChange={(e) => handleFeatureNameChange(f.id, e.target.value)}
                                                 />
                                                 <button
                                                     type="button"

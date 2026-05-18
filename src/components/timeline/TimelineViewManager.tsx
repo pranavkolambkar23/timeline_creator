@@ -4,6 +4,7 @@ import { useState } from "react";
 import HorizontalTimeline from "./HorizontalTimeline";
 import VerticalTimelineWithMap from "./VerticalTimelineWithMap";
 import FullMapView from "./FullMapView";
+import ViewerTour from "@/components/ViewerTour";
 
 interface TimelineViewManagerProps {
   timeline: {
@@ -19,10 +20,12 @@ export default function TimelineViewManager({ timeline }: TimelineViewManagerPro
 
   return (
     <div className="w-full flex flex-col">
+      <ViewerTour />
       {/* View Toggle Controls */}
-      <div className="w-full border-t border-foreground/5 bg-background flex justify-center py-6 relative z-20 shadow-sm">
+      <div id="tour-view-modes" className="w-full border-t border-foreground/5 bg-background flex justify-center py-6 relative z-20 shadow-sm">
         <div className="bg-foreground/5 p-1.5 rounded-full flex gap-2 border border-foreground/10">
           <button
+            id="tour-story-mode"
             onClick={() => setViewMode('story')}
             className={`px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-widest transition-all duration-300 flex items-center gap-2 ${
               viewMode === 'story' 
@@ -35,6 +38,7 @@ export default function TimelineViewManager({ timeline }: TimelineViewManagerPro
           </button>
           
           <button
+            id="tour-hybrid-mode"
             onClick={() => setViewMode('hybrid')}
             className={`px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-widest transition-all duration-300 flex items-center gap-2 ${
               viewMode === 'hybrid' 
@@ -47,6 +51,7 @@ export default function TimelineViewManager({ timeline }: TimelineViewManagerPro
           </button>
 
           <button
+            id="tour-map-mode"
             onClick={() => setViewMode('map')}
             className={`px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-widest transition-all duration-300 flex items-center gap-2 ${
               viewMode === 'map' 

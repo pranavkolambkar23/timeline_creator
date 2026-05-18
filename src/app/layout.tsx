@@ -5,6 +5,8 @@ import "./globals.css";
 
 import Providers from "./providers"; // ✅ ADD THIS
 
+import OnboardingGuide from "@/components/OnboardingGuide";
+
 // 🔥 Main UI Font (Best for apps)
 const inter = Inter({
   subsets: ["latin"],
@@ -38,6 +40,7 @@ export default function RootLayout({
       <body className="min-h-full antialiased transition-colors duration-300">
         <Providers>
           {children}
+          <OnboardingGuide />
           <Analytics />
         </Providers>
       </body>

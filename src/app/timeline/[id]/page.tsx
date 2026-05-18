@@ -14,8 +14,9 @@ export default async function TimelinePage({
     const { id } = await params;
     const session = await getServerSession(authOptions);
     const isAdmin = session?.user?.role === "ADMIN";
-
+    
     let timeline = null;
+    let isOwner = false;
 
     if (id) {
         try {
@@ -40,6 +41,10 @@ export default async function TimelinePage({
                         locationData: e.locationData,
                     })),
                 };
+                
+                if (session?.user?.id === dbTimeline.userId) {
+                    isOwner = true;
+                }
             }
         } catch (err) {
             console.error("Database fetch error:", err);
@@ -119,12 +124,13 @@ export default async function TimelinePage({
                     </a>
                 </div>
 
-                {/* Floating Admin Controls */}
-                {isAdmin && (
+                {/* Floating Timeline Controls */}
+                {(isAdmin || isOwner) && (
                     <AdminControls 
                         timelineId={timeline.id} 
                         initialIsFeatured={timeline.isFeatured} 
                         creatorId={timeline.userId}
+                        isAdmin={isAdmin}
                     />
                 )}
             </main>

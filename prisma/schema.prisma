@@ -23,6 +23,7 @@ model User {
   sessions Session[]
 
   timelines Timeline[]
+  feedbacks Feedback[]
 }
 
 model Timeline {
@@ -84,4 +85,14 @@ model Session {
   expires      DateTime
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Feedback {
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  type      String   @default("General")
+  createdAt DateTime @default(now())
+
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 }

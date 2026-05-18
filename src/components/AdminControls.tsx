@@ -8,14 +8,16 @@ import { useSession } from "next-auth/react";
 export default function AdminControls({ 
     timelineId, 
     initialIsFeatured,
-    creatorId
+    creatorId,
+    isAdmin
 }: { 
     timelineId: string; 
     initialIsFeatured: boolean;
     creatorId: string;
+    isAdmin: boolean;
 }) {
     const { data: session } = useSession();
-    const isOwner = session?.user?.id === creatorId;
+    const isOwner = session?.user?.id === creatorId || isAdmin;
     const [isFeatured, setIsFeatured] = useState(initialIsFeatured);
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
@@ -63,8 +65,9 @@ export default function AdminControls({
                 </Link>
             )}
 
-            <button
-                onClick={toggleFeatured}
+            {isAdmin && (
+                <button
+                    onClick={toggleFeatured}
                 disabled={isLoading}
                 className={`flex items-center gap-3 pl-6 pr-5 py-4 rounded-[2rem] border backdrop-blur-xl transition-all shadow-2xl active:scale-95 ${
                     isFeatured 
@@ -84,6 +87,7 @@ export default function AdminControls({
                     </svg>
                 </div>
             </button>
+            )}
         </div>
     );
 }

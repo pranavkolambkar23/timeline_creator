@@ -4,10 +4,12 @@ import { useSession, signIn, signOut } from "next-auth/react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import Logo from "./Logo";
+import FeedbackModal from "./FeedbackModal";
 
 export default function Header() {
     const { data: session } = useSession();
     const [isDarkMode, setIsDarkMode] = useState(true);
+    const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
     useEffect(() => {
         const savedTheme = localStorage.getItem("theme");
@@ -49,11 +51,33 @@ export default function Header() {
 
                 {/* Right: Actions */}
                 <div className="flex items-center gap-4">
+                    {/* Help Guide Button */}
+                    <button 
+                        onClick={() => window.dispatchEvent(new CustomEvent("open-onboarding-guide"))}
+                        className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-foreground/5 border border-foreground/10 text-foreground/60 hover:bg-foreground/10 hover:text-foreground rounded-lg text-[9px] font-black uppercase tracking-widest transition-all mr-1"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                        </svg>
+                        Guide & Docs
+                    </button>
+
+                    {/* Feedback Button */}
+                    <button 
+                        onClick={() => setIsFeedbackOpen(true)}
+                        className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-foreground/5 border border-foreground/10 text-foreground/60 hover:bg-foreground/10 hover:text-foreground rounded-lg text-[9px] font-black uppercase tracking-widest transition-all mr-1"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                        </svg>
+                        Give Feedback
+                    </button>
+
                     {/* Admin Link */}
                     {session?.user?.role === "ADMIN" && (
                         <Link 
                             href="/admin" 
-                            className="hidden md:flex items-center gap-2 px-4 py-2 bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all mr-2"
+                            className="hidden md:flex items-center gap-2 px-4 py-1.5 bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all mr-1"
                         >
                             Admin
                         </Link>
@@ -111,6 +135,7 @@ export default function Header() {
                     )}
                 </div>
             </div>
+            <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
         </header>
     );
 }

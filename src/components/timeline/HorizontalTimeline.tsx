@@ -22,6 +22,7 @@ export default function HorizontalTimeline({
     const [activationPoint, setActivationPoint] = useState(0);
     const [progress, setProgress] = useState(0);
     const [isScrolled, setIsScrolled] = useState(false);
+    const [activeIndex, setActiveIndex] = useState(0);
 
     const handleScroll = () => {
         if (!scrollContainerRef.current || events.length === 0) return;
@@ -49,7 +50,38 @@ export default function HorizontalTimeline({
             setProgress(scrollPercent);
         }
 
+        // Track closest active index to scanner
+        let closestIndex = 0;
+        let minDiff = Infinity;
+        events.forEach((_, idx) => {
+            const node = nodeRefs.current[idx];
+            if (node) {
+                const nodeCenterX = node.offsetLeft + (node.offsetWidth / 2);
+                const diff = Math.abs(currentScannerX - nodeCenterX);
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    closestIndex = idx;
+                }
+            }
+        });
+        setActiveIndex(closestIndex);
+
         setIsScrolled(scrollLeft > 50);
+    };
+
+    const scrollToEvent = (index: number) => {
+        if (!scrollContainerRef.current || events.length === 0) return;
+        const container = scrollContainerRef.current;
+        const node = nodeRefs.current[index];
+        if (!node) return;
+
+        const nodeCenterX = node.offsetLeft + (node.offsetWidth / 2);
+        const clientWidth = container.clientWidth;
+
+        container.scrollTo({
+            left: nodeCenterX - (clientWidth * 0.25),
+            behavior: "smooth"
+        });
     };
 
     useEffect(() => {
@@ -112,7 +144,7 @@ export default function HorizontalTimeline({
                         // PIXEL PERFECT ACTIVATION: Check if scanner has passed the center of this node
                         const container = nodeRefs.current[index];
                         const nodeCenterX = container ? (container.offsetLeft + (container.offsetWidth / 2)) : 0;
-                        const isActive = nodeCenterX > 0 && activationPoint >= nodeCenterX;
+                        const isActive = nodeCenterX > 0 && activationPoint >= (nodeCenterX - 20);
 
                         return (
                             <div 
@@ -127,19 +159,23 @@ export default function HorizontalTimeline({
                                 } ${isEven ? "bottom-1/2 mb-3 h-20" : "top-1/2 mt-3 h-20"}`} />
 
                                 {/* The Node (The Circle) */}
-                                <div className="relative z-20">
+                                <button 
+                                    onClick={() => scrollToEvent(index)}
+                                    className="relative z-20 focus:outline-none"
+                                >
                                     <div className={`w-5 h-5 rounded-full border-4 transition-all duration-300 relative ${
                                         isActive 
                                             ? "bg-indigo-500 border-indigo-400 scale-110 shadow-[0_0_15px_rgba(99,102,241,0.4)]" 
-                                            : "bg-background border-foreground/10"
+                                            : "bg-background border-foreground/10 hover:border-indigo-500/50"
                                     }`}>
                                         {isActive && <div className="absolute inset-0 bg-white/20 rounded-full animate-pulse" />}
                                     </div>
-                                </div>
+                                </button>
 
                                 {/* Event Card */}
                                 <div 
-                                    className={`absolute left-1/2 -translate-x-1/2 w-[360px] transition-all duration-700 ${
+                                    onClick={() => scrollToEvent(index)}
+                                    className={`absolute left-1/2 -translate-x-1/2 w-[360px] transition-all duration-700 cursor-pointer hover:scale-[1.03] active:scale-[0.99] group/card ${
                                         isEven ? "bottom-[calc(50%+4rem)]" : "top-[calc(50%+4rem)]"
                                     } ${isActive ? "opacity-100 translate-y-0" : "opacity-30 translate-y-4"}`}
                                 >
@@ -173,6 +209,30 @@ export default function HorizontalTimeline({
                     <div className="w-[40vw] flex-shrink-0" />
                 </div>
             </div>
+
+            {/* FLOATING NAVIGATION BUTTONS */}
+            {activeIndex > 0 && (
+                <button
+                    onClick={() => scrollToEvent(activeIndex - 1)}
+                    className="fixed left-6 top-1/2 -translate-y-1/2 z-[70] w-14 h-14 rounded-full bg-card/80 border border-foreground/10 text-foreground flex items-center justify-center shadow-2xl hover:bg-indigo-600 hover:text-white hover:border-indigo-500 hover:scale-110 active:scale-95 transition-all duration-300 group"
+                    aria-label="Previous event"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 transform group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+                    </svg>
+                </button>
+            )}
+            {activeIndex < events.length - 1 && (
+                <button
+                    onClick={() => scrollToEvent(activeIndex + 1)}
+                    className="fixed right-6 top-1/2 -translate-y-1/2 z-[70] w-14 h-14 rounded-full bg-card/80 border border-foreground/10 text-foreground flex items-center justify-center shadow-2xl hover:bg-indigo-600 hover:text-white hover:border-indigo-500 hover:scale-110 active:scale-95 transition-all duration-300 group"
+                    aria-label="Next event"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 transform group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                    </svg>
+                </button>
+            )}
 
             {/* Scroll Indication Footer */}
             {!isScrolled && (
