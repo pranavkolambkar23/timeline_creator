@@ -494,57 +494,76 @@ export default function EditTimeline() {
                                                 }`}
                                         >
                                             {/* Collapsed row */}
-                                            <button
-                                                type="button"
-                                                onClick={() => setActiveEventIndex(isOpen ? null : index)}
-                                                className="w-full flex items-center gap-3 px-4 py-3 text-left group"
-                                            >
-                                                {/* Index / sequence number */}
-                                                <div className={`flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-mono font-bold border transition-colors
-                                                    ${isOpen
-                                                        ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-400'
-                                                        : 'bg-white/[0.03] border-white/[0.08] text-white/30 group-hover:border-white/20'
-                                                    }`}>
-                                                    {String(index + 1).padStart(2, '0')}
-                                                </div>
-
-                                                {/* Info */}
-                                                <div className="flex-grow min-w-0">
-                                                    <p className={`text-[11px] font-bold truncate transition-colors ${event.title ? (isOpen ? 'text-white' : 'text-white/70') : 'text-white/20 italic'}`}>
-                                                        {event.title || 'Untitled Event'}
-                                                    </p>
-                                                    <div className="flex items-center gap-2 mt-0.5">
-                                                        <span className={`text-[8px] font-mono ${hasDate ? 'text-white/30' : 'text-rose-400/50'}`}>
-                                                            {hasDate ? formatDateDisplay(event.date) : 'NO DATE'}
-                                                        </span>
-                                                        {linkedCount > 0 && (
-                                                            <>
-                                                                <span className="w-0.5 h-0.5 rounded-full bg-white/20" />
-                                                                <span className="text-[8px] font-mono text-indigo-400/60">
-                                                                    {linkedCount}L
-                                                                </span>
-                                                            </>
-                                                        )}
+                                            <div className="w-full flex items-center justify-between pr-3 group/row">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setActiveEventIndex(isOpen ? null : index)}
+                                                    className="flex-grow flex items-center gap-3 px-4 py-3 text-left min-w-0"
+                                                >
+                                                    {/* Index / sequence number */}
+                                                    <div className={`flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-mono font-bold border transition-colors
+                                                        ${isOpen
+                                                            ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-400'
+                                                            : 'bg-white/[0.03] border-white/[0.08] text-white/30 group-hover/row:border-white/20'
+                                                        }`}>
+                                                        {String(index + 1).padStart(2, '0')}
                                                     </div>
-                                                </div>
 
-                                                {/* Linked layer dots */}
-                                                {linkedCount > 0 && (
-                                                    <div className="flex-shrink-0 flex gap-0.5">
-                                                        {event.linkedFeatureIds.slice(0, 4).map(fid => {
-                                                            const feat = masterGeoJson.features.find((f: any) => f.id === fid);
-                                                            const meta = feat ? (GEO_TYPE_META[feat.geometry.type] ?? GEO_TYPE_META.Point) : GEO_TYPE_META.Point;
-                                                            return <span key={fid} className={`w-1.5 h-1.5 rounded-full ${meta.color.replace('text-', 'bg-').replace('/400', '/60')}`} />;
-                                                        })}
-                                                        {linkedCount > 4 && <span className="text-[7px] font-mono text-white/20 ml-0.5">+{linkedCount - 4}</span>}
+                                                    {/* Info */}
+                                                    <div className="flex-grow min-w-0">
+                                                        <p className={`text-[11px] font-bold truncate transition-colors ${event.title ? (isOpen ? 'text-white' : 'text-white/70') : 'text-white/20 italic'}`}>
+                                                            {event.title || 'Untitled Event'}
+                                                        </p>
+                                                        <div className="flex items-center gap-2 mt-0.5">
+                                                            <span className={`text-[8px] font-mono ${hasDate ? 'text-white/30' : 'text-rose-400/50'}`}>
+                                                                {hasDate ? formatDateDisplay(event.date) : 'NO DATE'}
+                                                            </span>
+                                                            {linkedCount > 0 && (
+                                                                <>
+                                                                    <span className="w-0.5 h-0.5 rounded-full bg-white/20" />
+                                                                    <span className="text-[8px] font-mono text-indigo-400/60">
+                                                                        {linkedCount}L
+                                                                    </span>
+                                                                </>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                )}
 
-                                                {/* Chevron */}
-                                                <svg className={`w-3.5 h-3.5 text-white/20 flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                                </svg>
-                                            </button>
+                                                    {/* Linked layer dots */}
+                                                    {linkedCount > 0 && (
+                                                        <div className="flex-shrink-0 flex gap-0.5 mr-2">
+                                                            {event.linkedFeatureIds.slice(0, 4).map(fid => {
+                                                                const feat = masterGeoJson.features.find((f: any) => f.id === fid);
+                                                                const meta = feat ? (GEO_TYPE_META[feat.geometry.type] ?? GEO_TYPE_META.Point) : GEO_TYPE_META.Point;
+                                                                return <span key={fid} className={`w-1.5 h-1.5 rounded-full ${meta.color.replace('text-', 'bg-').replace('/400', '/60')}`} />;
+                                                            })}
+                                                            {linkedCount > 4 && <span className="text-[7px] font-mono text-white/20 ml-0.5">+{linkedCount - 4}</span>}
+                                                        </div>
+                                                    )}
+
+                                                    {/* Chevron */}
+                                                    <svg className={`w-3.5 h-3.5 text-white/20 flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                    </svg>
+                                                </button>
+
+                                                {/* Delete button shown by default, highlighted on hover */}
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (confirm(`Are you sure you want to delete event "${event.title || `#${index + 1}`}"?`)) {
+                                                            removeEvent(index);
+                                                        }
+                                                    }}
+                                                    className="flex-shrink-0 p-1.5 text-white/30 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all ml-1"
+                                                    title="Delete event"
+                                                >
+                                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </button>
+                                            </div>
 
                                             {/* ── Expanded body ── */}
                                             {isOpen && (

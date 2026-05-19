@@ -145,10 +145,8 @@ export default function OnboardingGuide() {
     const [slideIdx, setSlideIdx] = useState(0);
 
     useEffect(() => {
-        const hasSeen = localStorage.getItem("hasSeenGuide");
-        if (!hasSeen) {
-            setIsOpen(true);
-        }
+        // Set hasSeenGuide in localStorage so it's marked as seen from the start
+        localStorage.setItem("hasSeenGuide", "true");
 
         const handleOpen = () => {
             setSlideIdx(0);
@@ -159,7 +157,6 @@ export default function OnboardingGuide() {
     }, []);
 
     const handleClose = () => {
-        localStorage.setItem("hasSeenGuide", "true");
         setIsOpen(false);
     };
 

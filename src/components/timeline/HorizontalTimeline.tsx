@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useRef, useEffect, useState } from "react";
+import Link from "next/link";
+import Logo from "@/components/Logo";
 
 type Event = {
     id: string;
@@ -22,6 +24,7 @@ export default function HorizontalTimeline({
     const [activationPoint, setActivationPoint] = useState(0);
     const [progress, setProgress] = useState(0);
     const [isScrolled, setIsScrolled] = useState(false);
+    const [windowScrollY, setWindowScrollY] = useState(0);
     const [activeIndex, setActiveIndex] = useState(0);
 
     const handleScroll = () => {
@@ -87,16 +90,33 @@ export default function HorizontalTimeline({
     useEffect(() => {
         handleScroll();
         window.addEventListener('resize', handleScroll);
-        return () => window.removeEventListener('resize', handleScroll);
+        
+        const handleWindowScroll = () => {
+            setWindowScrollY(window.scrollY);
+        };
+        window.addEventListener('scroll', handleWindowScroll, { passive: true });
+        
+        // Initialize vertical scroll position
+        setWindowScrollY(window.scrollY);
+
+        return () => {
+            window.removeEventListener('resize', handleScroll);
+            window.removeEventListener('scroll', handleWindowScroll);
+        };
     }, [events]);
+
+    const showMiniHeader = isScrolled && windowScrollY > 100;
 
     return (
         <div className="relative w-full bg-background min-h-screen flex flex-col transition-colors duration-500 overflow-hidden">
             
             {/* CONTEXTUAL MINI-HEADER */}
-            <div className={`fixed top-0 left-0 right-0 z-[60] bg-background/90 backdrop-blur-md border-b border-foreground/5 py-4 px-8 transition-all duration-500 transform ${isScrolled ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0"}`}>
+            <div className={`fixed top-0 left-0 right-0 z-[60] bg-background/90 backdrop-blur-md border-b border-foreground/5 py-4 px-8 transition-all duration-500 transform ${showMiniHeader ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0"}`}>
                 <div className="max-w-[1600px] mx-auto flex items-center justify-between gap-8">
                     <div className="flex items-center gap-4 overflow-hidden">
+                        <Link href="/" className="flex items-center gap-2 group flex-shrink-0 mr-1">
+                            <Logo className="w-7 h-7 transition-transform group-hover:scale-110 duration-500" />
+                        </Link>
                         <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full flex-shrink-0 animate-pulse" />
                         <h2 className="text-sm font-black text-foreground truncate uppercase tracking-[0.2em]">{timelineTitle}</h2>
                     </div>
