@@ -13,9 +13,6 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "GEMINI_API_KEY is not configured in environment variables" }, { status: 500 });
         }
 
-        // We use gemini-flash-latest as it is fast, free-tier friendly, and multimodal
-        const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
-
         const parts: any[] = [];
 
         // Add the strict system prompt for JSON generation
@@ -50,7 +47,35 @@ Ensure the output is 100% valid JSON parseable by JSON.parse().`;
             });
         }
 
-        const result = await model.generateContent(parts);
+        // Multi-model fallback sequence to bypass 503 / 429 errors seamlessly
+        let result = null;
+        let lastError = null;
+        const modelsToTry = [
+            "gemini-1.5-flash",
+            "gemini-1.5-pro",
+            "gemini-2.0-flash",
+            "gemini-flash-latest"
+        ];
+
+        for (const modelName of modelsToTry) {
+            try {
+                console.log(`[AI Import] Attempting generation with: ${modelName}`);
+                const model = genAI.getGenerativeModel({ model: modelName });
+                result = await model.generateContent(parts);
+                if (result) {
+                    console.log(`[AI Import] Success using: ${modelName}`);
+                    break;
+                }
+            } catch (err: any) {
+                console.warn(`[AI Import] Model ${modelName} failed or busy. Error:`, err.message || err);
+                lastError = err;
+            }
+        }
+
+        if (!result) {
+            throw new Error(`All Gemini models are currently busy or unavailable. Last error: ${lastError?.message || lastError}`);
+        }
+
         const responseText = result.response.text();
         
         // Clean markdown backticks if Gemini still includes them despite instructions
