@@ -2,6 +2,27 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
+Create a Google OAuth client in Google Cloud Console and add these authorized
+redirect URIs:
+
+```text
+http://localhost:3000/api/auth/callback/google
+https://your-production-domain.com/api/auth/callback/google
+```
+
+Then add the credentials to `.env`:
+
+```text
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+```
+
+Apply the database migrations before starting the app:
+
+```bash
+npx prisma migrate deploy
+```
+
 First, run the development server:
 
 ```bash

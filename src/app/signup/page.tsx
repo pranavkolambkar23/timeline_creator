@@ -5,6 +5,7 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Logo from "@/components/Logo";
+import GoogleSignInButton from "@/components/GoogleSignInButton";
 
 export default function SignupPage() {
     const [email, setEmail] = useState("");
@@ -44,8 +45,8 @@ export default function SignupPage() {
                 router.push("/");
                 router.refresh();
             }
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "Something went wrong");
         } finally {
             setIsLoading(false);
         }
@@ -66,6 +67,16 @@ export default function SignupPage() {
                     <p className="mt-3 text-sm text-foreground/50 font-medium">
                         Start creating your first timeline today.
                     </p>
+                </div>
+
+                <GoogleSignInButton />
+
+                <div className="relative z-10 flex items-center gap-4">
+                    <div className="h-px flex-1 bg-foreground/10" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-foreground/30">
+                        Or use email
+                    </span>
+                    <div className="h-px flex-1 bg-foreground/10" />
                 </div>
 
                 <form className="mt-10 space-y-6 relative z-10" onSubmit={handleSubmit}>

@@ -5,6 +5,7 @@ import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Logo from "@/components/Logo";
+import GoogleSignInButton from "@/components/GoogleSignInButton";
 
 function LoginForm() {
     const [email, setEmail] = useState("");
@@ -34,7 +35,7 @@ function LoginForm() {
                 router.push(callbackUrl);
                 router.refresh();
             }
-        } catch (err: any) {
+        } catch {
             setError("Something went wrong. Please try again.");
         } finally {
             setIsLoading(false);
@@ -55,6 +56,16 @@ function LoginForm() {
                 <p className="mt-3 text-sm text-foreground/50 font-medium">
                     Continue your journey into history.
                 </p>
+            </div>
+
+            <GoogleSignInButton callbackUrl={callbackUrl} />
+
+            <div className="relative z-10 flex items-center gap-4">
+                <div className="h-px flex-1 bg-foreground/10" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-foreground/30">
+                    Or use email
+                </span>
+                <div className="h-px flex-1 bg-foreground/10" />
             </div>
 
             <form className="mt-10 space-y-6 relative z-10" onSubmit={handleSubmit}>

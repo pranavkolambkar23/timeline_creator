@@ -1,10 +1,18 @@
 import { NextAuthOptions } from "next-auth";
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcrypt";
 
 export const authOptions: NextAuthOptions = {
+    adapter: PrismaAdapter(prisma),
     providers: [
+        GoogleProvider({
+            clientId: process.env.GOOGLE_CLIENT_ID!,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+            allowDangerousEmailAccountLinking: true,
+        }),
         CredentialsProvider({
             name: "Credentials",
             credentials: {
@@ -21,7 +29,7 @@ export const authOptions: NextAuthOptions = {
                     where: { email: credentials.email },
                 });
 
-                if (!user) {
+                if (!user || !user.password) {
                     throw new Error("User not found");
                 }
 
