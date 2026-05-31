@@ -24,6 +24,11 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Timeline Creator",
   description: "Explore beautiful interactive timelines",
+  icons: {
+    icon: [{ url: "/timeline-creator-favicon.png", type: "image/png" }],
+    shortcut: "/timeline-creator-favicon.png",
+    apple: "/timeline-creator-favicon.png",
+  },
 };
 
 export default function RootLayout({
