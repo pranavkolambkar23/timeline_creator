@@ -105,7 +105,7 @@ export default function InteractiveMap({ events, activeEventId }: InteractiveMap
     : ['literal', false];
 
   return (
-    <div className="w-full h-full min-h-[500px] rounded-xl overflow-hidden border border-purple-500/20 relative shadow-[0_0_40px_-15px_rgba(139,92,246,0.3)] group">
+    <div className="w-full h-full min-h-0 md:min-h-[500px] rounded-none lg:rounded-xl overflow-hidden border-0 lg:border border-purple-500/20 relative shadow-[0_0_40px_-15px_rgba(139,92,246,0.3)] group [&_.maplibregl-ctrl-bottom-right]:hidden md:[&_.maplibregl-ctrl-bottom-right]:block">
       <div className="absolute inset-0 pointer-events-none border border-white/5 rounded-xl z-10" />
 
       <Map

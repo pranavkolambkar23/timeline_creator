@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import type { CSSProperties } from "react";
+import { useRef, useState } from "react";
 import InteractiveMap from "./InteractiveMap";
 
 interface VerticalTimelineWithMapProps {
@@ -9,11 +10,28 @@ interface VerticalTimelineWithMapProps {
 
 export default function VerticalTimelineWithMap({ events }: VerticalTimelineWithMapProps) {
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
+  const [mobileTimelineHeight, setMobileTimelineHeight] = useState(50);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const resizeMobilePanes = (clientY: number) => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const { top, height } = container.getBoundingClientRect();
+    const nextHeight = ((clientY - top) / height) * 100;
+    setMobileTimelineHeight(Math.min(Math.max(nextHeight, 25), 75));
+  };
 
   return (
-    <div className="w-full flex flex-col lg:flex-row h-[800px] border-y border-foreground/5 bg-background">
+    <div
+      ref={containerRef}
+      className="w-full flex h-[calc(100dvh-3.5rem)] flex-col lg:h-[800px] lg:flex-row border-y border-foreground/5 bg-background"
+      style={{ "--mobile-timeline-height": `${mobileTimelineHeight}%` } as CSSProperties}
+    >
       {/* Left Pane: Vertical Timeline */}
-      <div className="w-full lg:w-[40%] xl:w-1/3 h-[400px] lg:h-full overflow-y-auto border-r border-foreground/5 relative scrollbar-hide py-12 bg-background/50 backdrop-blur-md">
+      <div
+        className="h-[var(--mobile-timeline-height)] w-full lg:w-[40%] xl:w-1/3 lg:h-full overflow-y-auto border-b lg:border-b-0 lg:border-r border-foreground/5 relative scrollbar-hide py-12 bg-background/50 backdrop-blur-md"
+      >
         <div className="px-8 md:px-12">
           {/* Vertical Track Line */}
           <div className="absolute left-[3.25rem] md:left-[4.25rem] top-0 bottom-0 w-[2px] bg-gradient-to-b from-transparent via-foreground/10 to-transparent" />
@@ -70,9 +88,34 @@ export default function VerticalTimelineWithMap({ events }: VerticalTimelineWith
           })}
         </div>
       </div>
+
+      <div
+        role="separator"
+        aria-label="Resize timeline and map panes"
+        aria-orientation="horizontal"
+        aria-valuemin={25}
+        aria-valuemax={75}
+        aria-valuenow={Math.round(mobileTimelineHeight)}
+        className="relative z-20 flex h-5 shrink-0 touch-none cursor-row-resize items-center justify-center bg-background lg:hidden"
+        onPointerDown={(event) => {
+          event.currentTarget.setPointerCapture(event.pointerId);
+          resizeMobilePanes(event.clientY);
+        }}
+        onPointerMove={(event) => {
+          if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            resizeMobilePanes(event.clientY);
+          }
+        }}
+      >
+        <div className="flex h-7 w-14 items-center justify-center gap-1.5 rounded-lg border border-foreground/15 bg-card/95 shadow-lg shadow-black/20">
+          <span className="h-1 w-1 rounded-full bg-foreground/50" />
+          <span className="h-1 w-1 rounded-full bg-foreground/50" />
+          <span className="h-1 w-1 rounded-full bg-foreground/50" />
+        </div>
+      </div>
       
       {/* Right Pane: Interactive Map */}
-      <div className="w-full lg:w-[60%] xl:w-2/3 h-[400px] lg:h-full p-2 lg:p-6 bg-black/95 relative overflow-hidden flex items-center justify-center">
+      <div className="min-h-0 w-full flex-1 lg:w-[60%] xl:w-2/3 lg:h-full p-0 lg:p-6 bg-black/95 relative overflow-hidden flex items-center justify-center">
         <div className="absolute inset-0 bg-gradient-to-r from-background to-transparent z-10 w-8 lg:w-16 pointer-events-none" />
         <InteractiveMap events={events} activeEventId={activeEventId} />
       </div>
