@@ -579,7 +579,15 @@ export default function CreateTimeline() {
             <AiImportModal 
                 isOpen={isAiModalOpen} 
                 onClose={() => setIsAiModalOpen(false)} 
-                onImport={handleImport} 
+                onImport={(events, meta) => {
+                    handleImport(events);
+                    if (meta) {
+                        if (meta.title) setTitle(meta.title);
+                        if (meta.description) setDescription(meta.description);
+                        if (meta.category) setCategory(meta.category);
+                        if (meta.tags && meta.tags.length > 0) setTagsInput(meta.tags.join(", "));
+                    }
+                }} 
             />
         </div>
     );

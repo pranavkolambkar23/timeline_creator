@@ -51,6 +51,17 @@ export default function Header() {
 
                 {/* Right: Actions */}
                 <div className="flex items-center gap-4">
+                    {/* Global Timeline Link */}
+                    <Link
+                        href="/global"
+                        className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 text-indigo-400 hover:bg-indigo-500/20 hover:text-indigo-300 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all mr-1"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Global Timeline
+                    </Link>
+
                     {/* Help Guide Button */}
                     <button 
                         onClick={() => window.dispatchEvent(new CustomEvent("open-onboarding-guide"))}

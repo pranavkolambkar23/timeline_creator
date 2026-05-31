@@ -12,6 +12,11 @@ enum Role {
   ADMIN
 }
 
+enum CollectionScope {
+  FEATURED
+  PERSONAL
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -23,6 +28,7 @@ model User {
   sessions Session[]
 
   timelines Timeline[]
+  collections Collection[]
   feedbacks Feedback[]
 }
 
@@ -55,6 +61,7 @@ model TimelineEvent {
 
   timelineId String
   timeline   Timeline @relation(fields: [timelineId], references: [id], onDelete: Cascade)
+  collectionEvents CollectionEvent[]
 
   @@index([timelineId])
 }
@@ -95,4 +102,36 @@ model Feedback {
 
   userId    String?
   user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model Collection {
+  id          String   @id @default(cuid())
+  name        String
+  description String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scope  CollectionScope @default(PERSONAL)
+
+  collectionEvents CollectionEvent[]
+
+  @@index([userId])
+  @@index([scope])
+}
+
+model CollectionEvent {
+  id         String @id @default(cuid())
+  position   Int
+
+  collectionId String
+  eventId      String
+
+  collection Collection    @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  event      TimelineEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([collectionId, eventId])
+  @@index([collectionId, position])
+  @@index([eventId])
 }

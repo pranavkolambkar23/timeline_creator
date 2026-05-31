@@ -14,7 +14,10 @@ type ParsedEvent = {
 interface AiImportModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onImport: (events: ParsedEvent[]) => void;
+    onImport: (
+        events: ParsedEvent[],
+        metadata?: { title?: string; description?: string; category?: string; tags?: string[] }
+    ) => void;
 }
 
 export default function AiImportModal({ isOpen, onClose, onImport }: AiImportModalProps) {
@@ -22,6 +25,7 @@ export default function AiImportModal({ isOpen, onClose, onImport }: AiImportMod
     const [files, setFiles] = useState<{ name: string, mimeType: string, base64: string }[]>([]);
     const [step, setStep] = useState<'input' | 'processing' | 'preview' | 'geocoding'>('input');
     const [parsedEvents, setParsedEvents] = useState<ParsedEvent[]>([]);
+    const [metadata, setMetadata] = useState<{ title?: string; description?: string; category?: string; tags?: string[] } | null>(null);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -77,11 +81,24 @@ export default function AiImportModal({ isOpen, onClose, onImport }: AiImportMod
                 throw new Error(data.error || "Failed to process request");
             }
 
-            if (!Array.isArray(data)) {
+            let eventsData: any[] = [];
+            let metaData: typeof metadata = null;
+
+            if (Array.isArray(data)) {
+                eventsData = data;
+            } else if (data && typeof data === 'object') {
+                eventsData = Array.isArray(data.events) ? data.events : [];
+                metaData = {
+                    title: data.title || '',
+                    description: data.description || '',
+                    category: data.category || 'General',
+                    tags: Array.isArray(data.tags) ? data.tags : []
+                };
+            } else {
                 throw new Error("AI returned invalid format");
             }
 
-            const events: ParsedEvent[] = data.map((ev: any) => ({
+            const events: ParsedEvent[] = eventsData.map((ev: any) => ({
                 title: ev.title || 'Untitled',
                 description: ev.description || '',
                 date: ev.date || '',
@@ -90,6 +107,7 @@ export default function AiImportModal({ isOpen, onClose, onImport }: AiImportMod
             }));
 
             setParsedEvents(events);
+            setMetadata(metaData);
             setStep('preview');
         } catch (err: any) {
             setErrorMsg(err.message);
@@ -135,13 +153,14 @@ export default function AiImportModal({ isOpen, onClose, onImport }: AiImportMod
 
         // Wait a bit to show the completed states before auto-closing
         await sleep(500);
-        onImport(updatedEvents);
+        onImport(updatedEvents, metadata || undefined);
         handleClose();
     };
 
     const handleClose = () => {
         setStep('input');
         setParsedEvents([]);
+        setMetadata(null);
         setPrompt('');
         setFiles([]);
         setErrorMsg(null);
