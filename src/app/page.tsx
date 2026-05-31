@@ -45,7 +45,7 @@ export default function Home() {
     };
 
     return (
-        <main className="min-h-screen bg-background transition-colors duration-500">
+        <main className="min-h-screen overflow-x-hidden md:overflow-x-visible bg-background transition-colors duration-500">
             <Header />
 
             {/* Hero Section */}

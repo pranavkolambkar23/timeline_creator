@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma";
 import Header from "@/components/Header";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import AdminControls from "@/components/AdminControls";
 import { getCategoryColor } from "@/lib/colors";
 
 export default async function TimelinePage({
@@ -16,8 +15,6 @@ export default async function TimelinePage({
     const isAdmin = session?.user?.role === "ADMIN";
     
     let timeline = null;
-    let isOwner = false;
-
     if (id) {
         try {
             const dbTimeline = await prisma.timeline.findUnique({
@@ -41,10 +38,6 @@ export default async function TimelinePage({
                         locationData: e.locationData,
                     })),
                 };
-                
-                if (session?.user?.id === dbTimeline.userId) {
-                    isOwner = true;
-                }
             }
         } catch (err) {
             console.error("Database fetch error:", err);
@@ -72,11 +65,13 @@ export default async function TimelinePage({
 
     return (
         <div className="min-h-screen bg-background text-foreground selection:bg-indigo-500/30 overflow-x-hidden transition-colors duration-500">
-            <Header />
+            <div className="hidden md:block">
+                <Header />
+            </div>
             
             <main className="w-full">
                 {/* HERO SECTION - Entry Point */}
-                <div className="max-w-[1400px] mx-auto px-6 pt-32 pb-24">
+                <div className="hidden max-w-[1400px] mx-auto px-6 pt-4 md:block md:pt-6 pb-24">
                     <div className="flex flex-col items-center text-center">
                         <div className="mb-8 flex flex-wrap justify-center gap-3">
                             <span className={`px-5 py-2 text-[10px] font-black uppercase tracking-widest border rounded-full backdrop-blur-md bg-foreground/5 ${categoryClass.replace('bg-', 'text-').replace('text-', 'border-')}`}>
@@ -106,10 +101,10 @@ export default async function TimelinePage({
                 </div>
 
                 {/* THE FOCUS ENGINE */}
-                <TimelineViewManager timeline={timeline} />
+                <TimelineViewManager timeline={timeline} isAdmin={isAdmin} />
 
                 {/* FINAL FOOTER */}
-                <div className="max-w-7xl mx-auto px-6 py-40 flex flex-col items-center">
+                <div className="hidden max-w-7xl mx-auto px-6 py-40 md:flex flex-col items-center">
                     <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center mb-12 shadow-2xl shadow-indigo-500/20">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -124,15 +119,6 @@ export default async function TimelinePage({
                     </a>
                 </div>
 
-                {/* Floating Timeline Controls */}
-                {(isAdmin || isOwner) && (
-                    <AdminControls 
-                        timelineId={timeline.id} 
-                        initialIsFeatured={timeline.isFeatured} 
-                        creatorId={timeline.userId}
-                        isAdmin={isAdmin}
-                    />
-                )}
             </main>
         </div>
     );

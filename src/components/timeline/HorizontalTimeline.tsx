@@ -234,7 +234,7 @@ export default function HorizontalTimeline({
             {activeIndex > 0 && (
                 <button
                     onClick={() => scrollToEvent(activeIndex - 1)}
-                    className="fixed left-6 top-1/2 -translate-y-1/2 z-[70] w-14 h-14 rounded-full bg-card/80 border border-foreground/10 text-foreground flex items-center justify-center shadow-2xl hover:bg-indigo-600 hover:text-white hover:border-indigo-500 hover:scale-110 active:scale-95 transition-all duration-300 group"
+                    className="fixed left-6 top-1/2 -translate-y-1/2 z-[70] w-14 h-14 rounded-full bg-card/80 border border-foreground/10 text-foreground hidden md:flex items-center justify-center shadow-2xl hover:bg-indigo-600 hover:text-white hover:border-indigo-500 hover:scale-110 active:scale-95 transition-all duration-300 group"
                     aria-label="Previous event"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 transform group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -245,7 +245,7 @@ export default function HorizontalTimeline({
             {activeIndex < events.length - 1 && (
                 <button
                     onClick={() => scrollToEvent(activeIndex + 1)}
-                    className="fixed right-6 top-1/2 -translate-y-1/2 z-[70] w-14 h-14 rounded-full bg-card/80 border border-foreground/10 text-foreground flex items-center justify-center shadow-2xl hover:bg-indigo-600 hover:text-white hover:border-indigo-500 hover:scale-110 active:scale-95 transition-all duration-300 group"
+                    className="fixed right-6 top-1/2 -translate-y-1/2 z-[70] w-14 h-14 rounded-full bg-card/80 border border-foreground/10 text-foreground hidden md:flex items-center justify-center shadow-2xl hover:bg-indigo-600 hover:text-white hover:border-indigo-500 hover:scale-110 active:scale-95 transition-all duration-300 group"
                     aria-label="Next event"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 transform group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
