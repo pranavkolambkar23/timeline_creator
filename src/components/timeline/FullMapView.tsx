@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useRef, useCallback } from 'react';
-import Map, { Source, Layer, NavigationControl, Popup, MapRef } from 'react-map-gl/maplibre';
+import Map, { Source, Layer, Marker, NavigationControl, Popup, MapRef } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import MapSearchBar from './MapSearchBar';
 import BaseMapSwitcher, { MapStyleType, getMapStyle } from './BaseMapSwitcher';
@@ -68,6 +68,21 @@ export default function FullMapView({ events }: FullMapViewProps) {
     return events.find(e => e.id === popupInfo.eventId);
   }, [popupInfo, events]);
   const isSelectedEventVisible = selectedEvent ? visibleEvents.includes(selectedEvent.id) : false;
+  const selectedPointCoordinates = useMemo<[number, number][]>(() => {
+    if (!selectedEvent) return [];
+
+    const locationData = selectedEvent.locationData;
+    const features =
+      locationData?.type === 'FeatureCollection'
+        ? locationData.features
+        : locationData?.type === 'Feature'
+          ? [locationData]
+          : [];
+
+    return features
+      .filter((feature: any) => feature.geometry?.type === 'Point')
+      .map((feature: any) => feature.geometry.coordinates);
+  }, [selectedEvent]);
 
   const getFirstCoordinates = useCallback((locationData: any): [number, number] | null => {
     const firstFeature =
@@ -84,14 +99,13 @@ export default function FullMapView({ events }: FullMapViewProps) {
     return null;
   }, []);
 
-  const focusEvent = useCallback((event: any) => {
+  const focusEvent = useCallback((event: any, mobileSnap: MobileSheetSnap = 'middle') => {
     const coordinates = getFirstCoordinates(event.locationData);
     if (!coordinates) return;
 
-    setVisibleEvents(prev => prev.includes(event.id) ? prev : [...prev, event.id]);
     setPopupInfo({ eventId: event.id, lngLat: coordinates });
-    setMobileSheetSnap('middle');
-    setMobileSheetHeight(MOBILE_SHEET_HEIGHTS.middle);
+    setMobileSheetSnap(mobileSnap);
+    setMobileSheetHeight(MOBILE_SHEET_HEIGHTS[mobileSnap]);
     mapRef.current?.flyTo({ center: coordinates, zoom: 6, duration: 1000, essential: true });
   }, [getFirstCoordinates]);
 
@@ -175,10 +189,6 @@ export default function FullMapView({ events }: FullMapViewProps) {
     setVisibleEvents(prev => 
       prev.includes(id) ? prev.filter(e => e !== id) : [...prev, id]
     );
-    // If we hide the currently selected item, close the popup
-    if (popupInfo && popupInfo.eventId === id) {
-      setPopupInfo(null);
-    }
   };
 
   const toggleAllLayers = () => {
@@ -375,7 +385,7 @@ export default function FullMapView({ events }: FullMapViewProps) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => focusEvent(selectedEvent)}
+                  onClick={() => focusEvent(selectedEvent, 'low')}
                   className="rounded-lg bg-foreground/5 p-2 text-purple-400"
                   aria-label={`Zoom to ${selectedEvent.title}`}
                 >
@@ -462,7 +472,7 @@ export default function FullMapView({ events }: FullMapViewProps) {
 
                     <button
                       type="button"
-                      onClick={() => focusEvent(event)}
+                      onClick={() => focusEvent(event, 'low')}
                       className="rounded-xl bg-foreground/5 p-2 text-purple-400"
                       aria-label={`Zoom to ${event.title}`}
                     >
@@ -564,13 +574,37 @@ export default function FullMapView({ events }: FullMapViewProps) {
             type="circle"
             filter={['==', ['geometry-type'], 'Point']}
             paint={({
-              'circle-radius': hasSelection ? ['case', isTargetEvent, 8, 4] : 6,
+              'circle-radius': hasSelection ? ['case', isTargetEvent, 0, 4] : 6,
               'circle-color': hasSelection ? ['case', isTargetEvent, '#c084fc', '#6b7280'] : '#c084fc',
               'circle-stroke-width': 2,
               'circle-stroke-color': '#111827'
             } as any)}
           />
         </Source>
+
+        {selectedPointCoordinates.map(([longitude, latitude], index) => (
+          <Marker
+            key={`${selectedEvent?.id}-${index}`}
+            longitude={longitude}
+            latitude={latitude}
+            anchor="bottom"
+          >
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                if (selectedEvent) focusEvent(selectedEvent, 'low');
+              }}
+              className="drop-shadow-[0_4px_8px_rgba(0,0,0,0.45)]"
+              aria-label={`Selected location for ${selectedEvent?.title}`}
+            >
+              <svg className="h-9 w-9" viewBox="0 0 32 40" fill="none">
+                <path d="M16 39C16 39 30 25.5 30 14.8C30 6.63 23.73 1 16 1C8.27 1 2 6.63 2 14.8C2 25.5 16 39 16 39Z" fill="#A855F7" stroke="#111827" strokeWidth="2.5" />
+                <circle cx="16" cy="15" r="5" fill="#F8FAFC" />
+              </svg>
+            </button>
+          </Marker>
+        ))}
 
         {/* Beautiful Map Popup */}
         {popupInfo && selectedEvent && (
