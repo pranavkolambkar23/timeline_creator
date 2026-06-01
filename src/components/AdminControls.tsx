@@ -1,9 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import FeedbackModal from "./FeedbackModal";
+import MobileAppActions from "./MobileAppActions";
 
 export default function AdminControls({ 
     timelineId, 
@@ -25,8 +27,29 @@ export default function AdminControls({
     const [isFeatured, setIsFeatured] = useState(initialIsFeatured);
     const [isLoading, setIsLoading] = useState(false);
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+    const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
     const touchStartX = useRef<number | null>(null);
     const router = useRouter();
+
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(Boolean(document.fullscreenElement));
+        };
+
+        document.addEventListener("fullscreenchange", handleFullscreenChange);
+        return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    }, []);
+
+    const toggleFullscreen = async () => {
+        if (!document.fullscreenEnabled) return;
+
+        if (document.fullscreenElement) {
+            await document.exitFullscreen();
+        } else {
+            await document.documentElement.requestFullscreen();
+        }
+    };
 
     const toggleFeatured = async () => {
         setIsLoading(true);
@@ -218,6 +241,23 @@ export default function AdminControls({
                                 </div>
                             </button>
                         )}
+
+                        <div className="my-2 h-px bg-foreground/10" />
+
+                        <MobileAppActions
+                            isAdmin={isAdmin}
+                            onGuide={() => {
+                                setIsDrawerOpen(false);
+                                window.dispatchEvent(new CustomEvent("open-onboarding-guide"));
+                            }}
+                            onFeedback={() => {
+                                setIsDrawerOpen(false);
+                                setIsFeedbackOpen(true);
+                            }}
+                            onFullscreen={toggleFullscreen}
+                            isFullscreen={isFullscreen}
+                            onNavigate={() => setIsDrawerOpen(false)}
+                        />
                     </div>
 
                     <p className="mt-auto text-[10px] font-bold uppercase tracking-widest text-foreground/30">
@@ -225,6 +265,7 @@ export default function AdminControls({
                     </p>
                 </aside>
             </div>
+            <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
         </>
     );
 }

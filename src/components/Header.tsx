@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import Logo from "./Logo";
 import FeedbackModal from "./FeedbackModal";
+import MobileAppDrawer from "./MobileAppDrawer";
 
 export default function Header() {
     const { data: session } = useSession();
@@ -39,6 +40,7 @@ export default function Header() {
     };
 
     return (
+        <>
         <header className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-md border-b border-foreground/5 px-3 sm:px-6 py-4 transition-all duration-300">
             <div className="max-w-7xl mx-auto flex items-center justify-between">
                 {/* Left: Logo */}
@@ -149,5 +151,7 @@ export default function Header() {
             </div>
             <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
         </header>
+        <MobileAppDrawer isAdmin={session?.user?.role === "ADMIN"} />
+        </>
     );
 }

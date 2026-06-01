@@ -8,6 +8,7 @@ import ImportModal from "@/components/timeline/ImportModal";
 import AiImportModal from "@/components/timeline/AiImportModal";
 import StudioTour from "@/components/StudioTour";
 import { useTimelineStudio, EventType } from "@/hooks/useTimelineStudio";
+import MobileTimelineStudioDrawer from "@/components/timeline/MobileTimelineStudioDrawer";
 
 const CATEGORIES = ["General", "History", "Technology", "Science", "Art", "Sports"];
 
@@ -205,17 +206,19 @@ export default function EditTimeline() {
     return (
         <div className="h-screen flex flex-col bg-[#080808] text-white overflow-hidden">
             <Header />
-            <StudioTour />
+            <div className="hidden md:block">
+                <StudioTour />
+            </div>
 
-            <div className="flex-grow flex overflow-hidden">
+            <div className="relative flex flex-grow overflow-hidden">
 
                 {/* ══════════════════════════════════════════════════════════════
                     LEFT — MAP CANVAS
                 ══════════════════════════════════════════════════════════════ */}
-                <div id="tour-spatial-canvas" className="w-[55%] h-full flex flex-col relative border-r border-white/[0.06]">
+                <div id="tour-spatial-canvas" className="relative flex h-full w-full flex-col border-r border-white/[0.06] md:w-[55%]">
 
                     {/* Map header bar */}
-                    <div className="flex-shrink-0 flex items-center justify-between px-4 py-2.5 bg-[#080808] border-b border-white/[0.06]">
+                    <div className="hidden flex-shrink-0 items-center justify-between border-b border-white/[0.06] bg-[#080808] px-4 py-2.5 md:flex">
                         <div className="flex items-center gap-3">
                             <div className="flex gap-1">
                                 <span className="w-1.5 h-1.5 rounded-full bg-sky-500" />
@@ -242,7 +245,7 @@ export default function EditTimeline() {
 
                         {/* Active event overlay */}
                         {activeEvent && (
-                            <div className="absolute bottom-4 left-4 right-4 z-[1000] pointer-events-none">
+                            <div className="pointer-events-none absolute bottom-4 left-4 right-4 z-[1000] hidden md:block">
                                 <div className="flex items-center gap-3 bg-[#0a0a0a]/90 backdrop-blur-md border border-indigo-500/20 rounded-xl px-4 py-2.5">
                                     <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse flex-shrink-0" />
                                     <div className="flex-grow min-w-0">
@@ -260,7 +263,7 @@ export default function EditTimeline() {
 
                     {/* Feature chips strip */}
                     {totalFeatures > 0 && (
-                        <div className="flex-shrink-0 border-t border-white/[0.06] bg-[#0a0a0a] px-4 py-3">
+                        <div className="hidden flex-shrink-0 border-t border-white/[0.06] bg-[#0a0a0a] px-4 py-3 md:block">
                             <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-0.5">
                                 <span className="text-[8px] font-mono uppercase tracking-[0.3em] text-white/20 flex-shrink-0 pr-2 border-r border-white/10 mr-1">
                                     LAYERS
@@ -298,7 +301,7 @@ export default function EditTimeline() {
                 {/* ══════════════════════════════════════════════════════════════
                     RIGHT — STUDIO PANEL
                 ══════════════════════════════════════════════════════════════ */}
-                <div id="tour-narrative-panel" className="w-[45%] h-full flex flex-col bg-[#060606]">
+                <div id="tour-narrative-panel" className="hidden h-full w-[45%] flex-col bg-[#060606] md:flex">
 
                     {/* Top bar */}
                     <div className="flex-shrink-0 flex items-center justify-between px-6 py-3 border-b border-white/[0.06] bg-[#080808]">
@@ -673,6 +676,27 @@ export default function EditTimeline() {
                     </div>
                 </div>
             </div>
+
+            <MobileTimelineStudioDrawer
+                mode="edit"
+                title={title}
+                description={description}
+                category={category}
+                tagsInput={tagsInput}
+                events={events}
+                activeEventIndex={activeEventIndex}
+                saving={saving}
+                saveStatus={saveStatus}
+                onTitleChange={setTitle}
+                onDescriptionChange={setDescription}
+                onCategoryChange={setCategory}
+                onTagsInputChange={setTagsInput}
+                onActiveEventIndexChange={setActiveEventIndex}
+                onEventChange={handleEventChange}
+                onAddEvent={addEvent}
+                onRemoveEvent={removeEvent}
+                onSubmit={handleSubmit}
+            />
             
             <ImportModal 
                 isOpen={isImportModalOpen} 

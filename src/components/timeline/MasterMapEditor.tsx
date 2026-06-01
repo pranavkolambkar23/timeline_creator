@@ -304,7 +304,7 @@ function MasterMapEditor({ initialData, onChange, onDeleteFeature, selectedFeatu
       </Map>
 
       {/* Toolbar */}
-      <div className="absolute top-4 left-4 z-[1000] flex flex-col gap-2">
+      <div className="absolute top-4 left-4 z-[1000] hidden flex-col gap-2 md:flex">
         <div className="bg-[#111]/90 backdrop-blur-md border border-white/10 rounded-2xl p-1.5 flex flex-col gap-1 shadow-2xl">
           {tools.map(t => (
             <button
@@ -330,8 +330,39 @@ function MasterMapEditor({ initialData, onChange, onDeleteFeature, selectedFeatu
         </div>
       </div>
 
+      {/* Compact mobile drawing rail */}
+      <div className="absolute right-4 top-28 z-[1000] md:hidden">
+        <div className="flex flex-col gap-1 rounded-2xl border border-white/10 bg-[#111]/90 p-1.5 shadow-2xl backdrop-blur-md">
+          {tools.map(t => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => selectTool(t.id)}
+              title={t.label}
+              aria-label={t.label}
+              className={`flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-150 ${getToolClass(t.id, activeTool === t.id)}`}
+            >
+              {t.icon}
+            </button>
+          ))}
+          <div className="mx-auto my-0.5 h-px w-full bg-white/10" />
+          <button
+            type="button"
+            onClick={() => setWip([])}
+            title="Cancel current shape"
+            aria-label="Cancel current shape"
+            disabled={wip.length === 0}
+            className="flex h-10 w-10 items-center justify-center rounded-xl text-amber-400/50 transition-all hover:bg-amber-500/10 hover:text-amber-400 disabled:cursor-not-allowed disabled:opacity-20"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
       {/* Tool hint */}
-      <div className="absolute top-4 left-20 z-[1000] pointer-events-none">
+      <div className="absolute top-4 left-20 z-[1000] hidden pointer-events-none md:block">
         <div className={`backdrop-blur-sm border px-3 py-2 rounded-xl transition-colors ${isDeleteMode ? 'bg-rose-950/60 border-rose-500/20' : 'bg-black/60 border-white/10'}`}>
           <p className={`text-[10px] font-black uppercase tracking-widest ${isDeleteMode ? 'text-rose-400' : 'text-white/50'}`}>
             {tools.find(t => t.id === activeTool)?.label}
@@ -346,6 +377,13 @@ function MasterMapEditor({ initialData, onChange, onDeleteFeature, selectedFeatu
           )}
         </div>
       </div>
+      <style jsx global>{`
+        @media (max-width: 767px) {
+          .maplibregl-ctrl-bottom-right {
+            display: none !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

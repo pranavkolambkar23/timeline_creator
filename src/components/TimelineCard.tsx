@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 import { getCategoryColor } from "@/lib/colors";
 
 type Props = {
@@ -17,9 +20,11 @@ export default function TimelineCard({
     tags = [],
 }: Props) {
     const categoryClass = getCategoryColor(category);
+    const [isOpening, setIsOpening] = useState(false);
 
     return (
-        <Link href={`/timeline/${id}`} className="block group">
+        <>
+        <Link href={`/timeline/${id}`} onClick={() => setIsOpening(true)} className="block group">
             <div className="relative h-full bg-card rounded-[2.5rem] p-10 border border-foreground/5 shadow-sm hover:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.3)] dark:hover:shadow-[0_30px_60px_-15px_rgba(79,70,229,0.2)] hover:border-indigo-500/30 transition-all duration-500 flex flex-col overflow-hidden">
                 {/* Decorative background accent */}
                 <div className={`absolute top-0 right-0 w-32 h-32 -mr-12 -mt-12 rounded-full opacity-10 transition-transform duration-700 group-hover:scale-150 ${categoryClass.split(' ')[0]}`} />
@@ -68,5 +73,14 @@ export default function TimelineCard({
                 </div>
             </div>
         </Link>
+        {isOpening && (
+            <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-background/80 backdrop-blur-md">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-500/20 border-t-indigo-500" />
+                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-foreground/60">Opening Timeline</p>
+                </div>
+            </div>
+        )}
+        </>
     );
 }
