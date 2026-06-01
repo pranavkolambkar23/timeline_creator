@@ -120,12 +120,12 @@ export function parseHistoricalDate(value: unknown): ParsedHistoricalDate | null
         };
     }
 
-    const century = /^(c\.?|circa)?\s*(\d+)(?:st|nd|rd|th)\s+century\s*(BCE|CE)$/i.exec(input);
+    const century = /^(c\.?|circa)?\s*(\d+)(?:st|nd|rd|th)\s+century\s*(BCE|CE)?$/i.exec(input);
     if (century) {
         const approximate = Boolean(century[1]);
         const number = Number(century[2]);
         if (!number) return null;
-        const isBce = century[3].toUpperCase() === "BCE";
+        const isBce = century[3]?.toUpperCase() === "BCE";
         return {
             input,
             displayDate: `${approximate ? "c. " : ""}${number}${ordinalSuffix(number)} century${isBce ? " BCE" : ""}`,

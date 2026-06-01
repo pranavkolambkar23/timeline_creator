@@ -51,7 +51,7 @@ export default function HistoricalDateEditor({ value, onChange, compact = false 
         let result = "";
         if (state.precision === "century") {
             const number = Number(state.year);
-            result = number ? `${prefix}${number}${ordinalSuffix(number)} century ${state.era}` : "";
+            result = number ? `${prefix}${number}${ordinalSuffix(number)} century${suffix}` : "";
         } else if (state.precision === "year") {
             result = state.year ? `${prefix}${state.year}${suffix}` : "";
         } else if (state.precision === "month") {

@@ -62,16 +62,44 @@ const eventDate = (event: GlobalEvent) => {
 
 const eventTime = (event: GlobalEvent) => eventDate(event).getTime();
 
+const dateWithFullYear = (year: number, month = 0, day = 1, hours = 0, minutes = 0, seconds = 0) => {
+    const date = new Date(0);
+    date.setHours(hours, minutes, seconds, 0);
+    date.setFullYear(year, month, day);
+    return date;
+};
+
+const ordinal = (value: number) => {
+    const mod100 = value % 100;
+    if (mod100 >= 11 && mod100 <= 13) return `${value}th`;
+    if (value % 10 === 1) return `${value}st`;
+    if (value % 10 === 2) return `${value}nd`;
+    if (value % 10 === 3) return `${value}rd`;
+    return `${value}th`;
+};
+
+const formatHistoricalYear = (year: number) => year < 0 ? `${Math.abs(year)} BCE` : `${year}`;
+
+const formatHistoricalMonth = (date: Date, short = false) => {
+    const month = date.toLocaleDateString("en-US", { month: short ? "short" : "long" });
+    return `${month} ${formatHistoricalYear(date.getFullYear())}`;
+};
+
+const formatHistoricalDay = (date: Date) => {
+    const month = date.toLocaleDateString("en-US", { month: "short" });
+    return `${month} ${date.getDate()}, ${formatHistoricalYear(date.getFullYear())}`;
+};
+
 const formatEventGroup = (event: GlobalEvent, granularity: Granularity) => {
     const date = eventDate(event);
     if (granularity === "Year") {
-        return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+        return formatHistoricalMonth(date);
     }
     if (granularity === "Month") {
-        return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+        return formatHistoricalDay(date);
     }
     if (granularity === "Day") return "Events";
-    return `${date.getFullYear()}`;
+    return formatHistoricalYear(date.getFullYear());
 };
 
 const getEventCoordinates = (event: GlobalEvent): [number, number] | null => {
@@ -366,38 +394,40 @@ export default function GlobalTimeline() {
         const month = currentDate.getMonth();
         const date = currentDate.getDate();
 
-        let start = new Date(year, month, date);
-        let end = new Date(year, month, date);
+        let start = dateWithFullYear(year, month, date);
+        let end = dateWithFullYear(year, month, date);
         let label = '';
         let subLabel = '';
 
         if (granularity === 'Century') {
-            const startYear = Math.floor(year / 100) * 100;
-            start = new Date(startYear, 0, 1);
-            end = new Date(startYear + 99, 11, 31, 23, 59, 59);
-            const centuryNum = Math.abs(Math.floor(year / 100)) + 1;
-            label = year < 0 ? `${centuryNum}th Century BC` : `${centuryNum}th Century`;
-            subLabel = `${start.getFullYear()} - ${end.getFullYear()}`;
+            const centuryNum = year < 0 ? Math.ceil(Math.abs(year) / 100) : Math.ceil(year / 100);
+            const startYear = year < 0 ? -(centuryNum * 100) : ((centuryNum - 1) * 100) + 1;
+            const endYear = year < 0 ? -(((centuryNum - 1) * 100) + 1) : centuryNum * 100;
+            start = dateWithFullYear(startYear, 0, 1);
+            end = dateWithFullYear(endYear, 11, 31, 23, 59, 59);
+            label = `${ordinal(centuryNum)} Century${year < 0 ? ' BCE' : ''}`;
+            subLabel = `${formatHistoricalYear(startYear)} - ${formatHistoricalYear(endYear)}`;
         } else if (granularity === 'Decade') {
             const startYear = Math.floor(year / 10) * 10;
-            start = new Date(startYear, 0, 1);
-            end = new Date(startYear + 9, 11, 31, 23, 59, 59);
-            label = year < 0 ? `${Math.abs(startYear)}s BC` : `${startYear}s`;
-            subLabel = `${start.getFullYear()} - ${end.getFullYear()}`;
+            const endYear = startYear + 9;
+            start = dateWithFullYear(startYear, 0, 1);
+            end = dateWithFullYear(endYear, 11, 31, 23, 59, 59);
+            label = year < 0 ? `${Math.abs(startYear)}s BCE` : `${startYear}s`;
+            subLabel = `${formatHistoricalYear(startYear)} - ${formatHistoricalYear(endYear)}`;
         } else if (granularity === 'Year') {
-            start = new Date(year, 0, 1);
-            end = new Date(year, 11, 31, 23, 59, 59);
-            label = year < 0 ? `${Math.abs(year)} BC` : `${year}`;
+            start = dateWithFullYear(year, 0, 1);
+            end = dateWithFullYear(year, 11, 31, 23, 59, 59);
+            label = formatHistoricalYear(year);
             subLabel = `January - December`;
         } else if (granularity === 'Month') {
-            start = new Date(year, month, 1);
-            end = new Date(year, month + 1, 0, 23, 59, 59);
-            label = start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            start = dateWithFullYear(year, month, 1);
+            end = dateWithFullYear(year, month + 1, 0, 23, 59, 59);
+            label = formatHistoricalMonth(start);
             subLabel = `1st - ${end.getDate()}th`;
         } else if (granularity === 'Day') {
-            start = new Date(year, month, date, 0, 0, 0);
-            end = new Date(year, month, date, 23, 59, 59);
-            label = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            start = dateWithFullYear(year, month, date, 0, 0, 0);
+            end = dateWithFullYear(year, month, date, 23, 59, 59);
+            label = formatHistoricalDay(start);
             subLabel = `24 Hours`;
         }
 
@@ -419,7 +449,7 @@ export default function GlobalTimeline() {
         e.preventDefault();
         const year = parseInt(timeJumpInput);
         if (!isNaN(year)) {
-            setCurrentDate(new Date(year, 0, 1));
+            setCurrentDate(dateWithFullYear(year));
             setIsTimeJumpOpen(false);
             if (granularity === 'All Time') setGranularity('Year');
         }
@@ -557,16 +587,16 @@ export default function GlobalTimeline() {
                 || event.timeline.title.toLowerCase().includes(query);
         };
         const visibleEventIds = new Set(activeEvents.map(event => event.id));
-        const currentPeriodEvents = activeEvents.filter(matchesQuery);
+        const currentPeriodEvents = activeEvents.filter(matchesQuery).sort(compareHistoricalDates);
         const outsidePeriodEvents = query
-            ? events.filter(event => !visibleEventIds.has(event.id) && matchesQuery(event))
+            ? events.filter(event => !visibleEventIds.has(event.id) && matchesQuery(event)).sort(compareHistoricalDates)
             : [];
 
-        const groupedCurrentPeriodEvents = currentPeriodEvents.reduce<Record<string, GlobalEvent[]>>((groups, event) => {
+        const groupedCurrentPeriodEvents = [...currentPeriodEvents.reduce<Map<string, GlobalEvent[]>>((groups, event) => {
             const group = formatEventGroup(event, granularity);
-            groups[group] = [...(groups[group] || []), event];
+            groups.set(group, [...(groups.get(group) || []), event]);
             return groups;
-        }, {});
+        }, new Map()).entries()];
 
         return { groupedCurrentPeriodEvents, outsidePeriodEvents };
     }, [activeEvents, events, eventsDrawerQuery, granularity]);
@@ -817,12 +847,12 @@ export default function GlobalTimeline() {
                     </div>
 
                     <div className="flex-grow overflow-y-auto p-4" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.1) transparent' }}>
-                        {Object.keys(drawerEvents.groupedCurrentPeriodEvents).length === 0 && drawerEvents.outsidePeriodEvents.length === 0 ? (
+                        {drawerEvents.groupedCurrentPeriodEvents.length === 0 && drawerEvents.outsidePeriodEvents.length === 0 ? (
                             <div className="text-center p-6 border border-dashed border-white/10 rounded-xl bg-white/[0.02]">
                                 <p className="text-white/40 text-xs leading-relaxed">No events match this selected period and search.</p>
                             </div>
                         ) : (
-                            Object.entries(drawerEvents.groupedCurrentPeriodEvents).map(([group, groupedEvents]) => (
+                            drawerEvents.groupedCurrentPeriodEvents.map(([group, groupedEvents]) => (
                                 <section key={group} className="mb-5 last:mb-0">
                                     <div className="px-3 py-1.5 rounded-lg bg-[#111111]/95 text-[10px] font-black uppercase tracking-widest text-indigo-300 border border-white/5">
                                         {group}

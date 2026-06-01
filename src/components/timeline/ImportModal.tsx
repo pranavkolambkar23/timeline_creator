@@ -148,6 +148,7 @@ export default function ImportModal({ isOpen, onClose, onImport }: ImportModalPr
             { "Supported Date Format": "12-10-2024", Meaning: "Exact date using DD-MM-YYYY" },
             { "Supported Date Format": "10-2024", Meaning: "Month and year only" },
             { "Supported Date Format": "1737", Meaning: "Year only" },
+            { "Supported Date Format": "17th century", Meaning: "Century-level date" },
             { "Supported Date Format": "4500 BCE", Meaning: "Known BCE year" },
             { "Supported Date Format": "c. 4500 BCE", Meaning: "Approximate BCE year" },
             { "Supported Date Format": "5th century BCE", Meaning: "Century-level BCE date" },

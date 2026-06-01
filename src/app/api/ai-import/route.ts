@@ -29,7 +29,7 @@ The object must exactly match this structure:
     {
       "title": "Short event title (e.g. Arrive in Paris)",
       "description": "Details about the event, flight numbers, activities",
-      "date": "Use one supported format: YYYY-MM-DD, DD-MM-YYYY, MM-YYYY, YYYY, c. YYYY, YYYY BCE, c. YYYY BCE, or 5th century BCE",
+      "date": "Use one supported format: YYYY-MM-DD, DD-MM-YYYY, MM-YYYY, YYYY, c. YYYY, 17th century, YYYY BCE, c. YYYY BCE, or 5th century BCE",
       "locationStr": "City, Country or precise location name (e.g. Paris, France)"
     }
   ]
