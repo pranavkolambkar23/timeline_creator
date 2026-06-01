@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { compareHistoricalDates, historicalEventData } from "@/lib/historicalDate";
 
 export async function GET(
     req: Request,
@@ -39,6 +40,7 @@ export async function GET(
             );
         }
 
+        timeline.timelineEvents.sort(compareHistoricalDates);
         return NextResponse.json(timeline);
     } catch (error) {
         console.error("GET TIMELINE ERROR:", error);
@@ -98,6 +100,10 @@ export async function PUT(
         const body = await req.json();
         const { title, description, category, tags, events } = body;
 
+        if (!Array.isArray(events) || events.some((event: any) => !historicalEventData(event.date))) {
+            return NextResponse.json({ error: "Each event must have a valid historical date" }, { status: 400 });
+        }
+
         // 1. Check ownership (Strict: ONLY creator can edit)
         const existing = await prisma.timeline.findUnique({
             where: { id },
@@ -127,7 +133,7 @@ export async function PUT(
                         create: events.map((event: any) => ({
                             title: event.title,
                             description: event.description,
-                            date: new Date(event.date),
+                            ...historicalEventData(event.date)!,
                             locationData: event.locationData ?? null,
                         }))
                     }

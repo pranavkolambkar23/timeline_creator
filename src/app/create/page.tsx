@@ -9,6 +9,8 @@ import AiImportModal from "@/components/timeline/AiImportModal";
 import { useTimelineStudio, EventType } from "@/hooks/useTimelineStudio";
 import StudioTour from "@/components/StudioTour";
 import MobileTimelineStudioDrawer from "@/components/timeline/MobileTimelineStudioDrawer";
+import { historicalDisplayDate, isValidHistoricalDate } from "@/lib/historicalDate";
+import HistoricalDateEditor from "@/components/timeline/HistoricalDateEditor";
 
 const CATEGORIES = ["General", "History", "Technology", "Science", "Art", "Sports"];
 
@@ -59,7 +61,7 @@ export default function CreateTimeline() {
             return;
         }
         for (const [i, ev] of events.entries()) {
-            if (!ev.date || isNaN(new Date(ev.date).getTime())) {
+            if (!isValidHistoricalDate(ev.date)) {
                 alert(`Event "${ev.title || `#${i + 1}`}" is missing a valid date.`);
                 return;
             }
@@ -380,7 +382,7 @@ export default function CreateTimeline() {
                             <div className="space-y-1.5">
                                 {events.map((event, index) => {
                                     const isOpen = activeEventIndex === index;
-                                    const hasDate = event.date && !isNaN(new Date(event.date).getTime());
+                                    const hasDate = isValidHistoricalDate(event.date);
                                     const linkedCount = event.linkedFeatureIds.length;
 
                                     return (
@@ -416,7 +418,7 @@ export default function CreateTimeline() {
                                                         </p>
                                                         <div className="flex items-center gap-2 mt-0.5">
                                                             <span className={`text-[8px] font-mono ${hasDate ? 'text-white/30' : 'text-rose-400/50'}`}>
-                                                                {hasDate ? formatDateDisplay(event.date) : 'NO DATE'}
+                                                                {hasDate ? historicalDisplayDate({ displayDate: event.date }).toUpperCase() : 'NO DATE'}
                                                             </span>
                                                             {linkedCount > 0 && (
                                                                 <>
@@ -470,17 +472,12 @@ export default function CreateTimeline() {
                                                 <div className="px-4 pb-4 pt-1 border-t border-white/[0.06] space-y-3">
 
                                                     {/* Date + Title */}
-                                                    <div className="flex gap-2 pt-3">
-                                                        <div className="flex-shrink-0">
+                                                    <div className="space-y-3 pt-3">
+                                                        <div>
                                                             <label className="text-[7px] font-mono uppercase tracking-[0.3em] text-white/25 block mb-1">Date</label>
-                                                            <input
-                                                                type="date"
-                                                                className={`bg-white/[0.04] border px-2.5 py-2 rounded-lg text-[10px] font-mono text-white/70 outline-none transition-colors w-[140px]
-                                                                    ${!hasDate && event.date ? 'border-rose-500/40 text-rose-400' : 'border-white/[0.08] focus:border-indigo-500/40'}`}
-                                                                value={event.date}
-                                                                onChange={e => handleEventChange(index, 'date', e.target.value)}
-                                                            />
+                                                            <HistoricalDateEditor value={event.date} onChange={value => handleEventChange(index, 'date', value)} />
                                                         </div>
+                                                        <div className="flex gap-2">
                                                         <div className="flex-grow min-w-0">
                                                             <label className="text-[7px] font-mono uppercase tracking-[0.3em] text-white/25 block mb-1">Title</label>
                                                             <input
@@ -501,6 +498,7 @@ export default function CreateTimeline() {
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                                             </svg>
                                                         </button>
+                                                        </div>
                                                     </div>
 
                                                     {/* Description */}

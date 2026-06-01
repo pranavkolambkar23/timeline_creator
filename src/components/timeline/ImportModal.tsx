@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import * as XLSX from "xlsx";
+import { parseHistoricalDate } from "@/lib/historicalDate";
 
 type ParsedEvent = {
     title: string;
@@ -57,11 +58,7 @@ export default function ImportModal({ isOpen, onClose, onImport }: ImportModalPr
                     const dateObj = new Date(Math.round((rawDate - 25569) * 86400 * 1000));
                     date = dateObj.toISOString().split('T')[0];
                 } else {
-                    try {
-                        date = new Date(rawDate).toISOString().split('T')[0];
-                    } catch {
-                        date = String(rawDate);
-                    }
+                    date = parseHistoricalDate(rawDate)?.input || String(rawDate).trim();
                 }
             }
 

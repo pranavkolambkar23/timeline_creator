@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { compareHistoricalDates, historicalEventData } from "@/lib/historicalDate";
 
 // 🆕 POST → Create timeline with events
 export async function POST(req: Request) {
@@ -38,7 +39,7 @@ export async function POST(req: Request) {
 
         // ⚠️ 5. Validate each event
         for (const event of events) {
-            if (!event.title || !event.description || !event.date) {
+            if (!event.title || !event.description || !historicalEventData(event.date)) {
                 return NextResponse.json(
                     { error: "Each event must have title, description, and date" },
                     { status: 400 }
@@ -59,8 +60,7 @@ export async function POST(req: Request) {
                     create: events.map((event: any) => ({
                         title: event.title,
                         description: event.description,
-                        date: new Date(event.date),
-                        displayDate: event.displayDate || null,
+                        ...historicalEventData(event.date)!,
                         locationData: event.locationData || null,
                     })),
                 },
@@ -75,6 +75,7 @@ export async function POST(req: Request) {
         });
 
         // ✅ 7. Return response
+        timeline.timelineEvents.sort(compareHistoricalDates);
         return NextResponse.json(timeline, { status: 201 });
 
     } catch (error) {

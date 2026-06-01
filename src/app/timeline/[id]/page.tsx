@@ -4,6 +4,7 @@ import Header from "@/components/Header";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getCategoryColor } from "@/lib/colors";
+import { compareHistoricalDates, historicalDisplayDate } from "@/lib/historicalDate";
 
 export default async function TimelinePage({
     params,
@@ -21,7 +22,7 @@ export default async function TimelinePage({
                 where: { id },
                 include: {
                     timelineEvents: {
-                        orderBy: { date: "asc" },
+                        orderBy: { createdAt: "asc" },
                     },
                 },
             });
@@ -29,12 +30,14 @@ export default async function TimelinePage({
             if (dbTimeline) {
                 timeline = {
                     ...dbTimeline,
-                    events: dbTimeline.timelineEvents.map((e: any) => ({
+                    events: dbTimeline.timelineEvents.sort(compareHistoricalDates).map((e: any) => ({
                         id: e.id,
                         title: e.title,
                         description: e.description,
                         date: e.date,
-                        displayDate: e.displayDate || new Date(e.date).toLocaleDateString("en-US", { month: 'short', year: 'numeric' }),
+                        displayDate: historicalDisplayDate(e),
+                        datePrecision: e.datePrecision,
+                        isApproximate: e.isApproximate,
                         locationData: e.locationData,
                     })),
                 };

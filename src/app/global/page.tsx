@@ -5,12 +5,17 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import Header from "@/components/Header";
 import GlobalMap from "@/components/timeline/GlobalMap";
 import { useSession } from "next-auth/react";
+import { compareHistoricalDates, historicalDisplayDate } from "@/lib/historicalDate";
 
 type GlobalEvent = {
     id: string;
     title: string;
     description: string;
-    date: string;
+    date: string | null;
+    displayDate?: string | null;
+    historicalYear?: number | null;
+    historicalMonth?: number | null;
+    historicalDay?: number | null;
     locationData: any;
     timeline: {
         id: string;
@@ -45,8 +50,20 @@ type PlaceResult = {
     };
 };
 
+const eventDate = (event: GlobalEvent) => {
+    if (typeof event.historicalYear === "number") {
+        const date = new Date(0);
+        date.setHours(0, 0, 0, 0);
+        date.setFullYear(event.historicalYear, (event.historicalMonth ?? 1) - 1, event.historicalDay ?? 1);
+        return date;
+    }
+    return new Date(event.date ?? 0);
+};
+
+const eventTime = (event: GlobalEvent) => eventDate(event).getTime();
+
 const formatEventGroup = (event: GlobalEvent, granularity: Granularity) => {
-    const date = new Date(event.date);
+    const date = eventDate(event);
     if (granularity === "Year") {
         return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
     }
@@ -72,18 +89,13 @@ const getEventCoordinates = (event: GlobalEvent): [number, number] | null => {
     return null;
 };
 
-const formatRangeDate = (dateValue: string) => {
-    const date = new Date(dateValue);
-    const year = date.getFullYear();
-    const yearLabel = year < 0 ? `${Math.abs(year)} BC` : `${year}`;
-    return `${date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}, ${yearLabel}`;
-};
+const formatRangeDate = (event: GlobalEvent) => historicalDisplayDate(event);
 
 const getCollectionGranularity = (collectionEvents: GlobalEvent[]): Granularity => {
     if (collectionEvents.length < 2) return "Year";
-    const sortedEvents = [...collectionEvents].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    const start = new Date(sortedEvents[0].date);
-    const end = new Date(sortedEvents[sortedEvents.length - 1].date);
+    const sortedEvents = [...collectionEvents].sort(compareHistoricalDates);
+    const start = eventDate(sortedEvents[0]);
+    const end = eventDate(sortedEvents[sortedEvents.length - 1]);
     const spanDays = Math.max(0, (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
     const spanYears = spanDays / 365.25;
 
@@ -145,17 +157,17 @@ export default function GlobalTimeline() {
     const activeCollection = collections.find(collection => collection.id === activeCollectionId) ?? null;
     const collectionEventIds = useMemo(() => selectedCollection?.collectionEvents
         .map(item => item.event)
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        .sort(compareHistoricalDates)
         .map(event => event.id) ?? [], [selectedCollection]);
     const activeCollectionEventIds = useMemo(() => activeCollection?.collectionEvents
         .map(item => item.event)
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        .sort(compareHistoricalDates)
         .map(event => event.id) ?? [], [activeCollection]);
     const canEditCollections = mode === "personal" ? !!session?.user : session?.user?.role === "ADMIN";
     const activeCollectionEvents = useMemo(() => activeCollection?.collectionEvents.map(item => item.event) ?? [], [activeCollection]);
     const activeCollectionRange = useMemo(() => {
         if (activeCollectionEvents.length === 0) return null;
-        const sortedEvents = [...activeCollectionEvents].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        const sortedEvents = [...activeCollectionEvents].sort(compareHistoricalDates);
         return {
             start: sortedEvents[0],
             end: sortedEvents[sortedEvents.length - 1],
@@ -208,7 +220,7 @@ export default function GlobalTimeline() {
                 setEvents(data);
                 
                 if (data.length > 0) {
-                    const earliest = new Date(Math.min(...data.map((e: any) => new Date(e.date).getTime()).filter((t: number) => !isNaN(t))));
+                    const earliest = new Date(Math.min(...data.map((e: GlobalEvent) => eventTime(e)).filter((t: number) => !isNaN(t))));
                     if (earliest && isFinite(earliest.getTime())) {
                         setCurrentDate(earliest);
                     }
@@ -238,7 +250,7 @@ export default function GlobalTimeline() {
         const sortedEventIds = [...eventIds].sort((leftId, rightId) => {
             const left = allAvailableEvents.find(event => event.id === leftId);
             const right = allAvailableEvents.find(event => event.id === rightId);
-            return new Date(left?.date ?? 0).getTime() - new Date(right?.date ?? 0).getTime();
+            return compareHistoricalDates(left ?? {}, right ?? {});
         });
         const response = await fetch(`/api/collections/${collection.id}`, {
             method: "PUT",
@@ -322,10 +334,10 @@ export default function GlobalTimeline() {
     const activateCollection = (collection: SavedCollection, shouldPlay = false) => {
         const collectionEvents = collection.collectionEvents.map(item => item.event);
         if (collectionEvents.length === 0) return;
-        const sortedEvents = [...collectionEvents].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        const sortedEvents = [...collectionEvents].sort(compareHistoricalDates);
         setActiveCollectionId(collection.id);
         setGranularity(getCollectionGranularity(sortedEvents));
-        setCurrentDate(new Date(sortedEvents[0].date));
+        setCurrentDate(eventDate(sortedEvents[0]));
         setIsCollectionPlaying(shouldPlay);
         setCollectionStep(0);
         if (shouldPlay) setActiveEventId(collection.collectionEvents[0]?.event.id ?? null);
@@ -421,7 +433,7 @@ export default function GlobalTimeline() {
 
         return events.filter(e => {
             if (granularity === 'All Time') return true;
-            const eTime = new Date(e.date).getTime();
+            const eTime = eventTime(e);
             if (isNaN(eTime)) return false;
             return eTime >= timeBlock.start && eTime <= timeBlock.end;
         });
@@ -442,7 +454,7 @@ export default function GlobalTimeline() {
         const outEra: GlobalEvent[] = [];
 
         matched.forEach(e => {
-            const eTime = new Date(e.date).getTime();
+            const eTime = eventTime(e);
             if (granularity === 'All Time' || (eTime >= timeBlock.start && eTime <= timeBlock.end)) {
                 inEra.push(e);
             } else {
@@ -479,7 +491,7 @@ export default function GlobalTimeline() {
         }
         
         // Jump time if out of era
-        const evDate = new Date(ev.date);
+        const evDate = eventDate(ev);
         setCurrentDate(evDate);
         if (granularity === 'All Time') setGranularity('Year');
     };
@@ -702,7 +714,7 @@ export default function GlobalTimeline() {
                                                 className="px-4 py-2 hover:bg-white/10 cursor-pointer rounded-lg transition-colors"
                                             >
                                                 <h4 className="text-white text-sm font-medium">{ev.title}</h4>
-                                                <span className="text-white/40 text-xs font-mono">{new Date(ev.date).getFullYear()}</span>
+                                                <span className="text-white/40 text-xs font-mono">{historicalDisplayDate(ev)}</span>
                                             </div>
                                         ))}
                                     </div>
@@ -721,7 +733,7 @@ export default function GlobalTimeline() {
                                                 className="px-4 py-2 hover:bg-white/5 cursor-pointer rounded-lg transition-colors opacity-60 hover:opacity-100"
                                             >
                                                 <h4 className="text-white text-sm font-medium">{ev.title}</h4>
-                                                <span className="text-indigo-300 text-xs font-mono">{new Date(ev.date).getFullYear()}</span>
+                                                <span className="text-indigo-300 text-xs font-mono">{historicalDisplayDate(ev)}</span>
                                             </div>
                                         ))}
                                     </div>
@@ -859,7 +871,7 @@ export default function GlobalTimeline() {
                                                     <div>
                                                         <h4 className="text-sm font-medium text-white/90">{event.title}</h4>
                                                         <p className="text-[10px] font-mono text-white/40 mt-1">
-                                                            {new Date(event.date).getFullYear()} - {event.timeline.title}
+                                                            {historicalDisplayDate(event)} - {event.timeline.title}
                                                         </p>
                                                     </div>
                                                     <span className={`text-[9px] font-black uppercase tracking-widest shrink-0 ${hasLocation ? 'text-white/35' : 'text-amber-300/70'}`}>
@@ -1000,7 +1012,7 @@ export default function GlobalTimeline() {
                                                 <div className="text-indigo-500 font-black text-xs pt-0.5">{index + 1}.</div>
                                                 <div className="flex-1">
                                                     <h4 className="text-sm font-bold text-white/90 leading-tight mb-1">{ev.title}</h4>
-                                                    <p className="text-[10px] font-mono text-white/40">{new Date(ev.date).getFullYear()}</p>
+                                                    <p className="text-[10px] font-mono text-white/40">{historicalDisplayDate(ev)}</p>
                                                 </div>
                                                 {canEditCollections && <button
                                                     onClick={() => removeFromCollection(id)}
@@ -1067,7 +1079,7 @@ export default function GlobalTimeline() {
                                                                 <div key={event.id} className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-white/5">
                                                                     <div className="flex-1">
                                                                         <p className="text-xs text-white/80">{event.title}</p>
-                                                                        <p className="text-[9px] font-mono text-white/35 mt-0.5">{new Date(event.date).getFullYear()}</p>
+                                                                        <p className="text-[9px] font-mono text-white/35 mt-0.5">{historicalDisplayDate(event)}</p>
                                                                     </div>
                                                                     <button onClick={() => isIncluded ? removeFromCollection(event.id) : addToCollection(event.id)} className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest ${isIncluded ? 'bg-white/5 text-white/40 hover:text-red-300' : 'bg-indigo-500/15 text-indigo-300 hover:bg-indigo-500/25'}`}>
                                                                         {isIncluded ? "Remove" : "Add"}
@@ -1127,7 +1139,7 @@ export default function GlobalTimeline() {
                             <div className="flex items-start justify-between gap-4">
                                 <div>
                                     <p className="text-[9px] font-black uppercase tracking-widest text-indigo-300">{playingCollectionEvent.timeline.title}</p>
-                                    <p className="text-[10px] font-mono uppercase tracking-widest text-white/40 mt-1">{formatRangeDate(playingCollectionEvent.date)}</p>
+                                    <p className="text-[10px] font-mono uppercase tracking-widest text-white/40 mt-1">{formatRangeDate(playingCollectionEvent)}</p>
                                 </div>
                                 <span className="shrink-0 rounded-full bg-indigo-500/15 border border-indigo-500/20 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-indigo-300">
                                     {collectionStep + 1} / {activeCollectionEventIds.length}
@@ -1152,7 +1164,7 @@ export default function GlobalTimeline() {
 
                     {activeCollectionRange && (
                         <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 bg-black/50 px-3 py-1.5 rounded-full border border-white/10 backdrop-blur-sm">
-                            Collection Period: {formatRangeDate(activeCollectionRange.start.date)} - {formatRangeDate(activeCollectionRange.end.date)}
+                            Collection Period: {formatRangeDate(activeCollectionRange.start)} - {formatRangeDate(activeCollectionRange.end)}
                         </div>
                     )}
 

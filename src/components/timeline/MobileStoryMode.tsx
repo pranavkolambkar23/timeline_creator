@@ -1,12 +1,15 @@
 "use client";
 
 import { useRef, useState } from "react";
+import HistoricalDateBadges from "./HistoricalDateBadges";
 
 type TimelineEvent = {
   id: string;
   title: string;
   description: string;
   displayDate: string;
+  datePrecision?: string | null;
+  isApproximate?: boolean | null;
 };
 
 export default function MobileStoryMode({ events }: { events: TimelineEvent[] }) {
@@ -52,6 +55,7 @@ export default function MobileStoryMode({ events }: { events: TimelineEvent[] })
             {activeIndex + 1} / {events.length}
           </span>
         </div>
+        <HistoricalDateBadges isApproximate={activeEvent.isApproximate} datePrecision={activeEvent.datePrecision} className="-mt-5 mb-6" />
 
         <h2 className="text-4xl font-black leading-[0.95] tracking-tighter text-foreground">
           {activeEvent.title}

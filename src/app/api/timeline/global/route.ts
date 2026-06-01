@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { compareHistoricalDates } from "@/lib/historicalDate";
 
 export async function GET(req: Request) {
     try {
@@ -47,6 +48,7 @@ export async function GET(req: Request) {
             }
         });
 
+        events.sort(compareHistoricalDates);
         return NextResponse.json(events);
 
     } catch (error) {

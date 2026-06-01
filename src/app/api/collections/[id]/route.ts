@@ -2,6 +2,7 @@ import { CollectionScope } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { compareHistoricalDates } from "@/lib/historicalDate";
 import { prisma } from "@/lib/prisma";
 
 const collectionInclude = {
@@ -54,13 +55,19 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
             id: { in: eventIds },
             ...getAllowedEventFilter(existing.scope, session.user.id),
         },
-        select: { id: true, date: true },
+        select: {
+            id: true,
+            date: true,
+            historicalYear: true,
+            historicalMonth: true,
+            historicalDay: true,
+        },
     });
     const validEventIds = new Set(validEvents.map(event => event.id));
-    const eventDates = new Map(validEvents.map(event => [event.id, event.date.getTime()]));
+    const eventsById = new Map(validEvents.map(event => [event.id, event]));
     const chronologicalEventIds = eventIds
         .filter(eventId => validEventIds.has(eventId))
-        .sort((leftId, rightId) => (eventDates.get(leftId) ?? 0) - (eventDates.get(rightId) ?? 0));
+        .sort((leftId, rightId) => compareHistoricalDates(eventsById.get(leftId) ?? {}, eventsById.get(rightId) ?? {}));
 
     const collection = await prisma.$transaction(async tx => {
         await tx.collectionEvent.deleteMany({ where: { collectionId: id } });

@@ -3,6 +3,7 @@
 import type { CSSProperties } from "react";
 import { useRef, useState } from "react";
 import InteractiveMap from "./InteractiveMap";
+import HistoricalDateBadges from "./HistoricalDateBadges";
 
 interface VerticalTimelineWithMapProps {
   events: any[];
@@ -60,6 +61,7 @@ export default function VerticalTimelineWithMap({ events }: VerticalTimelineWith
                   {event.displayDate}
                   {isActive && <span className="w-8 h-[1px] bg-purple-500/50 block" />}
                 </div>
+                <HistoricalDateBadges isApproximate={event.isApproximate} datePrecision={event.datePrecision} className="mb-3" />
                 
                 <h3 className={`text-2xl font-bold mb-4 transition-colors duration-300 ${isActive ? 'text-foreground' : 'text-foreground/80'}`}>
                   {event.title}

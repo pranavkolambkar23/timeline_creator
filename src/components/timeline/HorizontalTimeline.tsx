@@ -3,6 +3,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import Link from "next/link";
 import Logo from "@/components/Logo";
+import HistoricalDateBadges from "./HistoricalDateBadges";
 
 type Event = {
     id: string;
@@ -10,6 +11,8 @@ type Event = {
     description: string;
     date: string | Date;
     displayDate: string;
+    datePrecision?: string | null;
+    isApproximate?: boolean | null;
 };
 
 export default function HorizontalTimeline({ 
@@ -208,6 +211,7 @@ export default function HorizontalTimeline({
                                             }`}>
                                                 {event.displayDate}
                                             </span>
+                                            <HistoricalDateBadges isApproximate={event.isApproximate} datePrecision={event.datePrecision} className="mt-2" />
                                         </div>
 
                                         <h3 className={`text-xl font-black mb-3 tracking-tighter transition-colors duration-500 leading-tight ${

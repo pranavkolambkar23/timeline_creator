@@ -2,6 +2,8 @@
 
 import { KeyboardEvent, PointerEvent, useRef, useState } from "react";
 import { EventType } from "@/hooks/useTimelineStudio";
+import { historicalDisplayDate, isValidHistoricalDate } from "@/lib/historicalDate";
+import HistoricalDateEditor from "./HistoricalDateEditor";
 
 const CATEGORIES = ["General", "History", "Technology", "Science", "Art", "Sports"];
 
@@ -45,28 +47,7 @@ interface MobileTimelineStudioDrawerProps {
 
 function formatDate(date: string) {
     if (!date) return "No date";
-    const parsed = new Date(date);
-    if (Number.isNaN(parsed.getTime())) return "Invalid date";
-    return parsed.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-}
-
-function getDateParts(date: string) {
-    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
-    return match ? { day: match[3], month: match[2], year: match[1] } : { day: "", month: "", year: "" };
-}
-
-function toIsoDate(date: string) {
-    const match = /^(\d{2})-(\d{2})-(\d{4})$/.exec(date.trim());
-    if (!match) return null;
-    const [, day, month, year] = match;
-    const parsed = new Date(`${year}-${month}-${day}T00:00:00`);
-    if (
-        Number.isNaN(parsed.getTime())
-        || parsed.getFullYear() !== Number(year)
-        || parsed.getMonth() + 1 !== Number(month)
-        || parsed.getDate() !== Number(day)
-    ) return null;
-    return `${year}-${month}-${day}`;
+    return isValidHistoricalDate(date) ? historicalDisplayDate({ displayDate: date }) : "Invalid date";
 }
 
 function CustomDropdown({
@@ -160,74 +141,7 @@ function TagChipInput({ value, onChange }: { value: string; onChange: (value: st
 }
 
 function MobileDateInput({ value, onChange }: { value: string; onChange: (value: string) => void }) {
-    const initialDate = getDateParts(value);
-    const [day, setDay] = useState(initialDate.day);
-    const [month, setMonth] = useState(initialDate.month);
-    const [year, setYear] = useState(initialDate.year);
-    const dayRef = useRef<HTMLInputElement>(null);
-    const monthRef = useRef<HTMLInputElement>(null);
-    const yearRef = useRef<HTMLInputElement>(null);
-    const pickerRef = useRef<HTMLInputElement>(null);
-    const monthInvalid = month.length === 2 && (Number(month) < 1 || Number(month) > 12);
-
-    const commit = (nextDay = day, nextMonth = month, nextYear = year) => {
-        if (!nextDay && !nextMonth && !nextYear) return onChange("");
-        const isoDate = toIsoDate(`${nextDay}-${nextMonth}-${nextYear}`);
-        if (isoDate) onChange(isoDate);
-    };
-
-    const editSegment = (
-        text: string,
-        maxLength: number,
-        setSegment: (next: string) => void,
-        nextRef?: React.RefObject<HTMLInputElement | null>,
-    ) => {
-        const digits = text.replace(/\D/g, "").slice(0, maxLength);
-        setSegment(digits);
-        if (digits.length === maxLength) nextRef?.current?.focus();
-    };
-
-    const moveBackOnEmpty = (event: KeyboardEvent<HTMLInputElement>, previousRef: React.RefObject<HTMLInputElement | null>) => {
-        if (event.key === "Backspace" && !event.currentTarget.value) previousRef.current?.focus();
-    };
-
-    return (
-        <div>
-            <div className={`flex items-center gap-2 rounded-xl border bg-white/[0.04] px-3 ${monthInvalid ? "border-rose-400/60" : "border-white/10 focus-within:border-indigo-400/50"}`}>
-                <div className="flex min-w-0 flex-grow items-center gap-1 py-3 text-sm text-white">
-                    <input ref={dayRef} value={day} onChange={(event) => editSegment(event.target.value, 2, setDay, monthRef)} onFocus={(event) => event.currentTarget.select()} onBlur={() => commit()} inputMode="numeric" placeholder="DD" aria-label="Day" className="w-6 bg-transparent text-center outline-none placeholder:text-white/20" />
-                    <span className="text-white/35">-</span>
-                    <input ref={monthRef} value={month} onChange={(event) => {
-                        const digits = event.target.value.replace(/\D/g, "").slice(0, 2);
-                        setMonth(digits);
-                        if (digits.length === 2 && Number(digits) >= 1 && Number(digits) <= 12) yearRef.current?.focus();
-                    }} onKeyDown={(event) => moveBackOnEmpty(event, dayRef)} onFocus={(event) => event.currentTarget.select()} onBlur={() => commit()} inputMode="numeric" placeholder="MM" aria-label="Month" aria-invalid={monthInvalid} className={`w-6 bg-transparent text-center outline-none placeholder:text-white/20 ${monthInvalid ? "text-rose-300" : ""}`} />
-                    <span className="text-white/35">-</span>
-                    <input ref={yearRef} value={year} onChange={(event) => editSegment(event.target.value, 4, setYear)} onKeyDown={(event) => moveBackOnEmpty(event, monthRef)} onFocus={(event) => event.currentTarget.select()} onBlur={() => commit()} inputMode="numeric" placeholder="YYYY" aria-label="Year" className="w-11 bg-transparent text-center outline-none placeholder:text-white/20" />
-                </div>
-                <button type="button" onClick={() => {
-                    const picker = pickerRef.current;
-                    if (picker?.showPicker) picker.showPicker();
-                    else picker?.click();
-                }} aria-label="Open date picker" className="rounded-lg p-1.5 text-indigo-200/70">
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 7V3m8 4V3m-9 8h10M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" />
-                    </svg>
-                </button>
-                <input ref={pickerRef} type="date" value={value} onChange={(event) => {
-                    const nextDate = getDateParts(event.target.value);
-                    setDay(nextDate.day);
-                    setMonth(nextDate.month);
-                    setYear(nextDate.year);
-                    onChange(event.target.value);
-                }} tabIndex={-1} className="pointer-events-none absolute h-0 w-0 opacity-0" />
-            </div>
-            {monthInvalid
-                ? <span className="mt-1.5 block text-[10px] text-rose-300">Month must be between 01 and 12.</span>
-                : <span className="mt-1.5 block text-[10px] text-white/25">Use the calendar or enter DD-MM-YYYY.</span>
-            }
-        </div>
-    );
+    return <HistoricalDateEditor value={value} onChange={onChange} compact />;
 }
 
 function GeospatialFeaturePlaceholder() {
