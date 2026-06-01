@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import * as XLSX from "xlsx";
-import { parseHistoricalDate } from "@/lib/historicalDate";
+import { parseHistoricalDate, parseImportedHistoricalDate } from "@/lib/historicalDate";
 
 type ParsedEvent = {
     title: string;
@@ -10,6 +10,7 @@ type ParsedEvent = {
     date: string;
     locationStr: string;
     status: 'pending' | 'geocoding' | 'ready' | 'error';
+    dateValid: boolean;
     coords?: [number, number];
 };
 
@@ -53,13 +54,7 @@ export default function ImportModal({ isOpen, onClose, onImport }: ImportModalPr
             let date = '';
             if (row.Date || row.date) {
                 const rawDate = row.Date || row.date;
-                if (typeof rawDate === 'number') {
-                    // Excel serial date
-                    const dateObj = new Date(Math.round((rawDate - 25569) * 86400 * 1000));
-                    date = dateObj.toISOString().split('T')[0];
-                } else {
-                    date = parseHistoricalDate(rawDate)?.input || String(rawDate).trim();
-                }
+                date = parseImportedHistoricalDate(rawDate)?.input || String(rawDate).trim();
             }
 
             const locationStr = row.Location || row.City || row.Place || row.location || '';
@@ -68,6 +63,7 @@ export default function ImportModal({ isOpen, onClose, onImport }: ImportModalPr
                 title: String(title),
                 description: String(description),
                 date,
+                dateValid: Boolean(parseHistoricalDate(date)),
                 locationStr: String(locationStr),
                 status: 'pending' as const
             };
@@ -96,6 +92,7 @@ export default function ImportModal({ isOpen, onClose, onImport }: ImportModalPr
     const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
     const startGeocoding = async () => {
+        if (parsedEvents.some(ev => !ev.dateValid)) return;
         setStep('geocoding');
         
         const updatedEvents = [...parsedEvents];
@@ -146,8 +143,19 @@ export default function ImportModal({ isOpen, onClose, onImport }: ImportModalPr
             { Date: '2024-10-12', Title: 'Arrive in Rome', Description: 'Flight lands at FCO at 10 AM', Location: 'Rome, Italy' },
             { Date: '2024-10-14', Title: 'Colosseum Tour', Description: 'Guided tour starts at 9 AM', Location: 'Colosseum, Rome' }
         ]);
+        const guide = XLSX.utils.json_to_sheet([
+            { "Supported Date Format": "2024-10-12", Meaning: "Exact date using YYYY-MM-DD" },
+            { "Supported Date Format": "12-10-2024", Meaning: "Exact date using DD-MM-YYYY" },
+            { "Supported Date Format": "10-2024", Meaning: "Month and year only" },
+            { "Supported Date Format": "1737", Meaning: "Year only" },
+            { "Supported Date Format": "4500 BCE", Meaning: "Known BCE year" },
+            { "Supported Date Format": "c. 4500 BCE", Meaning: "Approximate BCE year" },
+            { "Supported Date Format": "5th century BCE", Meaning: "Century-level BCE date" },
+            { "Supported Date Format": "c. Oct 1850", Meaning: "Approximate month and year" },
+        ]);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Trip Plan");
+        XLSX.utils.book_append_sheet(wb, ws, "Events");
+        XLSX.utils.book_append_sheet(wb, guide, "Date Format Guide");
         XLSX.writeFile(wb, "Timeline_Template.xlsx");
     };
 
@@ -207,6 +215,7 @@ export default function ImportModal({ isOpen, onClose, onImport }: ImportModalPr
                                     Download Template
                                 </button>
                             </div>
+                            <p className="px-1 text-[10px] leading-relaxed text-white/30">The template includes a Date Format Guide sheet with exact, month-only, year-only, BCE, approximate, and century examples.</p>
                         </div>
                     )}
 
@@ -235,11 +244,12 @@ export default function ImportModal({ isOpen, onClose, onImport }: ImportModalPr
                                     <tbody>
                                         {parsedEvents.map((ev, idx) => (
                                             <tr key={idx} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
-                                                <td className="px-4 py-2 whitespace-nowrap text-white/50">{ev.date || '—'}</td>
+                                                <td className={`px-4 py-2 whitespace-nowrap ${ev.dateValid ? 'text-white/50' : 'text-rose-300'}`}>{ev.date || '—'}</td>
                                                 <td className="px-4 py-2 font-medium text-white/90">{ev.title}</td>
                                                 <td className="px-4 py-2 text-white/60">{ev.locationStr || '—'}</td>
                                                 <td className="px-4 py-2 text-right">
-                                                    {ev.status === 'pending' && <span className="text-white/30">Pending</span>}
+                                                    {!ev.dateValid && <span className="text-rose-300">Invalid date</span>}
+                                                    {ev.dateValid && ev.status === 'pending' && <span className="text-white/30">Pending</span>}
                                                     {ev.status === 'geocoding' && <span className="text-indigo-400 animate-pulse">Searching...</span>}
                                                     {ev.status === 'ready' && <span className="text-emerald-400">Ready</span>}
                                                     {ev.status === 'error' && <span className="text-amber-400">No coords found</span>}
@@ -264,7 +274,8 @@ export default function ImportModal({ isOpen, onClose, onImport }: ImportModalPr
                         </button>
                         <button 
                             onClick={startGeocoding}
-                            className="px-5 py-2 bg-indigo-500 hover:bg-indigo-600 text-white text-[11px] font-bold rounded-lg transition-colors flex items-center gap-2"
+                            disabled={parsedEvents.some(ev => !ev.dateValid)}
+                            className="px-5 py-2 bg-indigo-500 hover:bg-indigo-600 text-white text-[11px] font-bold rounded-lg transition-colors flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
                         >
                             <span>Import & Auto-Map</span>
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

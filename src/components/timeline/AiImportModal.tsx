@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { parseHistoricalDate } from "@/lib/historicalDate";
 
 type ParsedEvent = {
     title: string;
@@ -8,6 +9,7 @@ type ParsedEvent = {
     date: string;
     locationStr: string;
     status: 'pending' | 'geocoding' | 'ready' | 'error';
+    dateValid: boolean;
     coords?: [number, number];
 };
 
@@ -98,13 +100,17 @@ export default function AiImportModal({ isOpen, onClose, onImport }: AiImportMod
                 throw new Error("AI returned invalid format");
             }
 
-            const events: ParsedEvent[] = eventsData.map((ev: any) => ({
-                title: ev.title || 'Untitled',
-                description: ev.description || '',
-                date: ev.date || '',
-                locationStr: ev.locationStr || '',
-                status: 'pending' as const
-            }));
+            const events: ParsedEvent[] = eventsData.map((ev: any) => {
+                const parsedDate = parseHistoricalDate(ev.date);
+                return {
+                    title: ev.title || 'Untitled',
+                    description: ev.description || '',
+                    date: parsedDate?.input || String(ev.date || '').trim(),
+                    locationStr: ev.locationStr || '',
+                    status: 'pending' as const,
+                    dateValid: Boolean(parsedDate),
+                };
+            });
 
             setParsedEvents(events);
             setMetadata(metaData);
@@ -118,6 +124,7 @@ export default function AiImportModal({ isOpen, onClose, onImport }: AiImportMod
     const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
     const startGeocoding = async () => {
+        if (parsedEvents.some(ev => !ev.dateValid)) return;
         setStep('geocoding');
         
         const updatedEvents = [...parsedEvents];
@@ -309,11 +316,12 @@ export default function AiImportModal({ isOpen, onClose, onImport }: AiImportMod
                                     <tbody>
                                         {parsedEvents.map((ev, idx) => (
                                             <tr key={idx} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
-                                                <td className="px-4 py-2 whitespace-nowrap text-white/50">{ev.date || '—'}</td>
+                                                <td className={`px-4 py-2 whitespace-nowrap ${ev.dateValid ? 'text-white/50' : 'text-rose-300'}`}>{ev.date || '—'}</td>
                                                 <td className="px-4 py-2 font-medium text-white/90">{ev.title}</td>
                                                 <td className="px-4 py-2 text-white/60">{ev.locationStr || '—'}</td>
                                                 <td className="px-4 py-2 text-right">
-                                                    {ev.status === 'pending' && <span className="text-white/30">Pending</span>}
+                                                    {!ev.dateValid && <span className="text-rose-300">Invalid date</span>}
+                                                    {ev.dateValid && ev.status === 'pending' && <span className="text-white/30">Pending</span>}
                                                     {ev.status === 'geocoding' && <span className="text-indigo-400 animate-pulse">Searching...</span>}
                                                     {ev.status === 'ready' && <span className="text-emerald-400">Ready</span>}
                                                     {ev.status === 'error' && <span className="text-amber-400">No coords found</span>}
@@ -338,7 +346,8 @@ export default function AiImportModal({ isOpen, onClose, onImport }: AiImportMod
                         </button>
                         <button 
                             onClick={startGeocoding}
-                            className="px-5 py-2 bg-indigo-500 hover:bg-indigo-600 text-white text-[11px] font-bold rounded-lg transition-colors flex items-center gap-2"
+                            disabled={parsedEvents.some(ev => !ev.dateValid)}
+                            className="px-5 py-2 bg-indigo-500 hover:bg-indigo-600 text-white text-[11px] font-bold rounded-lg transition-colors flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
                         >
                             <span>Import & Auto-Map</span>
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

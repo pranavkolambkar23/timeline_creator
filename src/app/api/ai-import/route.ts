@@ -29,12 +29,12 @@ The object must exactly match this structure:
     {
       "title": "Short event title (e.g. Arrive in Paris)",
       "description": "Details about the event, flight numbers, activities",
-      "date": "A historical date such as YYYY-MM-DD, 1737 CE, c. 4500 BCE, or 5th century BCE",
+      "date": "Use one supported format: YYYY-MM-DD, DD-MM-YYYY, MM-YYYY, YYYY, c. YYYY, YYYY BCE, c. YYYY BCE, or 5th century BCE",
       "locationStr": "City, Country or precise location name (e.g. Paris, France)"
     }
   ]
 }
-Use the most historically accurate date precision available. Do not invent an exact day for year-only, approximate, BCE, or century-level dates. If the date is unknown, leave an empty string.
+Use the most historically accurate date precision available. Do not invent an exact day for year-only, month-only, approximate, BCE, or century-level dates. Use c. only when the date is approximate. Date ranges are not supported: choose the most meaningful single date for the event. If an event has no usable date position, omit that event.
 If location is unknown, leave empty string.
 Ensure the output is 100% valid JSON parseable by JSON.parse().`;
 

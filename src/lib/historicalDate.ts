@@ -171,6 +171,19 @@ export function isValidHistoricalDate(value: unknown) {
     return parseHistoricalDate(value) !== null;
 }
 
+export function parseImportedHistoricalDate(value: unknown) {
+    if (typeof value === "number") {
+        if (Number.isInteger(value) && value >= 1 && value <= 9999) {
+            return parseHistoricalDate(String(value));
+        }
+        const excelDate = new Date(Math.round((value - 25569) * 86400 * 1000));
+        return Number.isNaN(excelDate.getTime())
+            ? null
+            : parseHistoricalDate(excelDate.toISOString().split("T")[0]);
+    }
+    return parseHistoricalDate(value);
+}
+
 export function historicalDateInput(event: StoredHistoricalDate) {
     if (event.displayDate) return event.displayDate;
     if (!event.date) return "";
