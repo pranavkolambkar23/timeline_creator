@@ -83,7 +83,7 @@ export default function TimelineViewManager({ timeline, isAdmin }: TimelineViewM
         </button>
 
         {mobileViewMode === 'overview' && (
-          <section className="flex h-full flex-col overflow-y-auto px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-20">
+          <section className="custom-scrollbar flex h-full flex-col overflow-y-auto px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-20">
             <div className="mb-6 flex flex-wrap gap-2">
               <span className="rounded-full border border-indigo-500/30 bg-indigo-500/10 px-4 py-2 text-[9px] font-black uppercase tracking-widest text-indigo-400">
                 {timeline.category}
@@ -116,12 +116,12 @@ export default function TimelineViewManager({ timeline, isAdmin }: TimelineViewM
 
         {mobileViewMode === 'story' && <MobileStoryMode events={timeline.events} />}
         {mobileViewMode === 'hybrid' && (
-          <div className="h-full overflow-y-auto pt-14">
+          <div className="custom-scrollbar h-full overflow-y-auto pt-14">
             <VerticalTimelineWithMap events={timeline.events} />
           </div>
         )}
         {mobileViewMode === 'map' && (
-          <div className="h-full overflow-y-auto pt-14">
+          <div className="custom-scrollbar h-full overflow-y-auto pt-14">
             <FullMapView events={timeline.events} />
           </div>
         )}

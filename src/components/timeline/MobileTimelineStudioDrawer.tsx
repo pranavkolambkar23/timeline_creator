@@ -274,7 +274,7 @@ export default function MobileTimelineStudioDrawer({
                         ))}
                     </div>
 
-                    <div className="flex-grow overflow-y-auto overscroll-contain px-4 pb-8 pt-4">
+                    <div className="custom-scrollbar flex-grow overflow-y-auto overscroll-contain px-4 pb-8 pt-4">
                         {tab === "overview" && (
                             <div className="space-y-4">
                                 <div>

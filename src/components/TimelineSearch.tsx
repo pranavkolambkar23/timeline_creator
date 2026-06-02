@@ -16,6 +16,10 @@ type SearchResult = {
         id: string;
         title: string;
     } | null;
+    matchedDate: {
+        eventTitle: string;
+        label: string;
+    } | null;
 };
 
 function SearchIcon({ className = "h-5 w-5" }: { className?: string }) {
@@ -63,7 +67,7 @@ function SearchResults({
     }
 
     return (
-        <div className={`${isMobile ? "max-h-none flex-1" : "max-h-[min(36rem,68vh)]"} overflow-y-auto p-2`}>
+        <div className={`${isMobile ? "max-h-none flex-1" : "max-h-[min(36rem,68vh)]"} custom-scrollbar overflow-y-auto p-2`}>
             {results.map((result) => (
                 <Link
                     key={result.id}
@@ -104,6 +108,12 @@ function SearchResults({
                     {result.matchedEvent && (
                         <p className="mt-2 truncate text-[10px] font-bold text-indigo-400">
                             Matched event: {result.matchedEvent.title}
+                        </p>
+                    )}
+
+                    {result.matchedDate && (
+                        <p className="mt-2 truncate text-[10px] font-bold text-purple-400">
+                            Matched date: {result.matchedDate.label} in {result.matchedDate.eventTitle}
                         </p>
                     )}
                 </Link>

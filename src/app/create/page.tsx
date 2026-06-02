@@ -259,7 +259,7 @@ export default function CreateTimeline() {
                     </div>
 
                     {/* Scrollable body */}
-                    <div className="flex-grow overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: '#ffffff10 transparent' }}>
+                    <div className="custom-scrollbar flex-grow overflow-y-auto">
 
                         {/* ── Timeline metadata ── */}
                         <div className="px-6 py-5 border-b border-white/[0.06] space-y-3">

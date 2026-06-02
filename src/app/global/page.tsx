@@ -693,7 +693,7 @@ export default function GlobalTimeline() {
 
                         {/* Search Dropdown */}
                         {isSearchFocused && searchQuery && (
-                            <div className="absolute top-full left-0 right-0 mt-2 bg-[#060606]/95 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.8)] max-h-96 overflow-y-auto">
+                            <div className="custom-scrollbar absolute top-full left-0 right-0 mt-2 bg-[#060606]/95 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.8)] max-h-96 overflow-y-auto">
                                 {isPlacesLoading && (
                                     <div className="px-4 py-3 text-[10px] font-mono uppercase tracking-widest text-white/40">
                                         Searching places...
@@ -846,7 +846,7 @@ export default function GlobalTimeline() {
                         </div>
                     </div>
 
-                    <div className="flex-grow overflow-y-auto p-4" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.1) transparent' }}>
+                    <div className="custom-scrollbar flex-grow overflow-y-auto p-4">
                         {drawerEvents.groupedCurrentPeriodEvents.length === 0 && drawerEvents.outsidePeriodEvents.length === 0 ? (
                             <div className="text-center p-6 border border-dashed border-white/10 rounded-xl bg-white/[0.02]">
                                 <p className="text-white/40 text-xs leading-relaxed">No events match this selected period and search.</p>
@@ -953,7 +953,7 @@ export default function GlobalTimeline() {
                         )}
                     </div>}
 
-                    <div className="flex-grow overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.1) transparent' }}>
+                    <div className="custom-scrollbar flex-grow overflow-y-auto">
                         {collectionNotice && (
                             <div className={`mx-4 mt-4 rounded-xl border px-3 py-2.5 text-xs shadow-lg ${collectionNotice.type === "success" ? "border-emerald-400/20 bg-emerald-500/10 text-emerald-100" : "border-red-400/20 bg-red-500/10 text-red-100"}`}>
                                 {collectionNotice.message}
@@ -1176,7 +1176,7 @@ export default function GlobalTimeline() {
                                 </span>
                             </div>
                             <h3 className="mt-3 text-xl font-black leading-tight text-white">{playingCollectionEvent.title}</h3>
-                            <div className="mt-3 max-h-36 overflow-y-auto pr-2 text-sm leading-relaxed text-white/65" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.12) transparent' }}>
+                            <div className="custom-scrollbar mt-3 max-h-36 overflow-y-auto pr-2 text-sm leading-relaxed text-white/65">
                                 {playingCollectionEvent.description}
                             </div>
                         </div>

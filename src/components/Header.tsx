@@ -15,7 +15,6 @@ export default function Header() {
     const [isMobileHeaderVisible, setIsMobileHeaderVisible] = useState(true);
     const [isMoreOpen, setIsMoreOpen] = useState(false);
     const previousScrollYRef = useRef(0);
-    const touchStartYRef = useRef<number | null>(null);
     const upwardScrollRef = useRef(0);
     const moreMenuRef = useRef<HTMLDivElement>(null);
 
@@ -33,77 +32,36 @@ export default function Header() {
     }, []);
 
     useEffect(() => {
-        const handleScroll = () => {
-            const currentScrollY = window.scrollY;
-            const scrollDelta = currentScrollY - previousScrollYRef.current;
-
-            if (currentScrollY < 72) {
-                upwardScrollRef.current = 0;
-                setIsMobileHeaderVisible(true);
-            } else if (scrollDelta > 8) {
-                upwardScrollRef.current = 0;
-                setIsMobileHeaderVisible(false);
-            } else if (scrollDelta < 0) {
-                upwardScrollRef.current += Math.abs(scrollDelta);
-                if (upwardScrollRef.current >= 6) setIsMobileHeaderVisible(true);
-            } else if (scrollDelta > 0) {
-                upwardScrollRef.current = 0;
-            }
-
-            if (currentScrollY <= previousScrollYRef.current && currentScrollY < document.documentElement.scrollHeight - window.innerHeight - 8) {
-                setIsMobileHeaderVisible(true);
-            }
-
-            previousScrollYRef.current = currentScrollY;
-        };
-
-        previousScrollYRef.current = window.scrollY;
-        window.addEventListener("scroll", handleScroll, { passive: true });
-        return () => window.removeEventListener("scroll", handleScroll);
-    }, []);
-
-    useEffect(() => {
-        const handleTouchStart = (event: TouchEvent) => {
-            touchStartYRef.current = event.touches[0]?.clientY ?? null;
-        };
-
-        const handleTouchMove = (event: TouchEvent) => {
-            if (touchStartYRef.current === null) return;
-
-            const currentY = event.touches[0]?.clientY;
-            if (currentY === undefined) return;
-
-            const touchDelta = currentY - touchStartYRef.current;
-
-            if (touchDelta > 8) {
-                setIsMobileHeaderVisible(true);
-            } else if (touchDelta < -24 && window.scrollY > 72) {
-                setIsMobileHeaderVisible(false);
-            }
-        };
-
-        const handleTouchEnd = () => {
-            touchStartYRef.current = null;
-        };
-
-        window.addEventListener("touchstart", handleTouchStart, { passive: true });
-        window.addEventListener("touchmove", handleTouchMove, { passive: true });
-        window.addEventListener("touchend", handleTouchEnd, { passive: true });
-
-        return () => {
-            window.removeEventListener("touchstart", handleTouchStart);
-            window.removeEventListener("touchmove", handleTouchMove);
-            window.removeEventListener("touchend", handleTouchEnd);
-        };
-    }, []);
-
-    useEffect(() => {
         const handlePointerDown = (event: PointerEvent) => {
             if (!moreMenuRef.current?.contains(event.target as Node)) setIsMoreOpen(false);
         };
 
         document.addEventListener("pointerdown", handlePointerDown);
         return () => document.removeEventListener("pointerdown", handlePointerDown);
+    }, []);
+
+    useEffect(() => {
+        const handleScroll = () => {
+            const currentScrollY = Math.max(0, window.scrollY);
+            const scrollDelta = currentScrollY - previousScrollYRef.current;
+
+            if (currentScrollY < 80) {
+                upwardScrollRef.current = 0;
+                setIsMobileHeaderVisible(true);
+            } else if (scrollDelta > 10) {
+                upwardScrollRef.current = 0;
+                setIsMobileHeaderVisible(false);
+            } else if (scrollDelta < 0) {
+                upwardScrollRef.current += Math.abs(scrollDelta);
+                if (upwardScrollRef.current >= 4) setIsMobileHeaderVisible(true);
+            }
+
+            previousScrollYRef.current = currentScrollY;
+        };
+
+        previousScrollYRef.current = Math.max(0, window.scrollY);
+        window.addEventListener("scroll", handleScroll, { passive: true });
+        return () => window.removeEventListener("scroll", handleScroll);
     }, []);
 
     const toggleTheme = () => {
@@ -122,7 +80,7 @@ export default function Header() {
 
     return (
         <>
-        <header className={`sticky top-0 z-50 w-full bg-background/80 backdrop-blur-md border-b border-foreground/5 px-3 sm:px-6 py-3 sm:py-4 transition-transform duration-300 md:translate-y-0 ${isMobileHeaderVisible ? "translate-y-0" : "-translate-y-full"}`}>
+        <header className={`fixed top-0 left-0 right-0 z-50 w-full bg-background/80 backdrop-blur-md border-b border-foreground/5 px-3 py-3 transition-all duration-300 md:sticky md:translate-y-0 md:px-6 md:py-4 ${isMobileHeaderVisible ? "translate-y-0" : "-translate-y-full"}`}>
             <div className="max-w-7xl mx-auto flex items-center gap-2 sm:gap-5">
                 {/* Left: Logo */}
                 <Link href="/" className="flex shrink-0 sm:shrink items-center gap-3 group">
@@ -250,6 +208,7 @@ export default function Header() {
             </div>
             <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
         </header>
+        <div className="h-[65px] md:hidden" aria-hidden="true" />
         <MobileAppDrawer isAdmin={session?.user?.role === "ADMIN"} />
         </>
     );

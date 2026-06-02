@@ -239,7 +239,7 @@ export default function FullMapView({ events }: FullMapViewProps) {
 
           {/* Panel Content */}
           {isLayerPanelOpen && (
-            <div className="p-2 max-h-[400px] overflow-y-auto scrollbar-hide">
+            <div className="custom-scrollbar p-2 max-h-[400px] overflow-y-auto">
               <div className="px-3 pb-2 pt-1 flex justify-between items-center border-b border-foreground/5 mb-2">
                 <span className="text-[10px] uppercase font-bold text-foreground/40 tracking-wider">
                   {visibleEvents.length} of {eventsWithLocation.length} Visible
@@ -331,7 +331,7 @@ export default function FullMapView({ events }: FullMapViewProps) {
         {selectedEvent ? (
           <div
             ref={mobileSheetScrollRef}
-            className="min-h-0 flex-1 overflow-y-auto px-5 pb-[max(1rem,env(safe-area-inset-bottom))]"
+            className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-5 pb-[max(1rem,env(safe-area-inset-bottom))]"
             onScroll={(event) => {
               if (mobileSheetSnap === 'middle' && event.currentTarget.scrollTop > 8) {
                 snapMobileSheet('full');
@@ -414,7 +414,7 @@ export default function FullMapView({ events }: FullMapViewProps) {
             )}
           </div>
         ) : (
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
             <div
               className="mb-3 flex touch-none items-center justify-between px-1"
               onPointerDown={(event) => {
