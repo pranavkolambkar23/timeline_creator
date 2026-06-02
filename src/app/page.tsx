@@ -1,19 +1,177 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 import Header from "@/components/Header";
 import TimelineCard from "@/components/TimelineCard";
+import Footer from "@/components/Footer";
+
+const TIMELINES_PER_PAGE = 6;
+
+const getTimelineCategories = (timelines: any[]) => {
+    const categories = timelines
+        .map((timeline) => timeline.category?.trim())
+        .filter((category): category is string => Boolean(category));
+
+    return ["All", ...Array.from(new Set(categories)).sort((a, b) => a.localeCompare(b))];
+};
+
+const filterTimelinesByCategory = (timelines: any[], category: string) => {
+    if (category === "All") return timelines;
+
+    return timelines.filter((timeline) => timeline.category?.trim() === category);
+};
+
+const getPageItems = (currentPage: number, totalPages: number) => {
+    if (totalPages <= 7) {
+        return Array.from({ length: totalPages }, (_, index) => index + 1);
+    }
+
+    if (currentPage <= 4) return [1, 2, 3, 4, 5, "...", totalPages];
+    if (currentPage >= totalPages - 3) return [1, "...", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+
+    return [1, "...", currentPage - 1, currentPage, currentPage + 1, "...", totalPages];
+};
+
+function CategoryFilter({
+    categories,
+    selectedCategory,
+    onCategoryChange,
+}: {
+    categories: string[];
+    selectedCategory: string;
+    onCategoryChange: (category: string) => void;
+}) {
+    if (categories.length <= 1) return null;
+
+    return (
+        <>
+            <div className="hidden sm:flex flex-wrap items-center gap-2">
+                {categories.map((category) => {
+                    const isSelected = category === selectedCategory;
+
+                    return (
+                        <button
+                            key={category}
+                            type="button"
+                            onClick={() => onCategoryChange(category)}
+                            className={`px-4 py-2 rounded-full border text-[10px] font-black uppercase tracking-widest transition-all ${
+                                isSelected
+                                    ? "bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20"
+                                    : "bg-foreground/5 border-foreground/10 text-foreground/50 hover:bg-foreground/10 hover:text-foreground"
+                            }`}
+                        >
+                            {category}
+                        </button>
+                    );
+                })}
+            </div>
+
+            <div className="no-scrollbar -mx-6 flex gap-2 overflow-x-auto px-6 pb-1 sm:hidden">
+                {categories.map((category) => {
+                    const isSelected = category === selectedCategory;
+
+                    return (
+                        <button
+                            key={category}
+                            type="button"
+                            aria-pressed={isSelected}
+                            onClick={() => onCategoryChange(category)}
+                            className={`shrink-0 rounded-full border px-4 py-2.5 text-[10px] font-black uppercase tracking-widest transition-all ${
+                                isSelected
+                                    ? "border-indigo-500 bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
+                                    : "border-foreground/10 bg-foreground/5 text-foreground/50"
+                            }`}
+                        >
+                            {category}
+                        </button>
+                    );
+                })}
+            </div>
+        </>
+    );
+}
+
+function Pagination({
+    currentPage,
+    totalPages,
+    onPageChange,
+}: {
+    currentPage: number;
+    totalPages: number;
+    onPageChange: (page: number) => void;
+}) {
+    if (totalPages <= 1) return null;
+
+    return (
+        <nav aria-label="Timeline pages" className="mt-14 flex items-center justify-center">
+            <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:justify-center">
+                <button
+                    type="button"
+                    onClick={() => onPageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="rounded-xl border border-foreground/10 bg-foreground/5 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-foreground/60 transition-all hover:bg-foreground/10 hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
+                >
+                    Previous
+                </button>
+
+                <span className="px-2 text-[10px] font-black uppercase tracking-widest text-foreground/50 sm:hidden">
+                    Page {currentPage} of {totalPages}
+                </span>
+
+                <div className="hidden items-center gap-2 sm:flex">
+                    {getPageItems(currentPage, totalPages).map((page, index) => (
+                        typeof page === "number" ? (
+                            <button
+                                key={page}
+                                type="button"
+                                aria-label={`Go to page ${page}`}
+                                aria-current={page === currentPage ? "page" : undefined}
+                                onClick={() => onPageChange(page)}
+                                className={`h-10 min-w-10 rounded-xl border px-3 text-[10px] font-black transition-all ${
+                                    page === currentPage
+                                        ? "border-indigo-500 bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
+                                        : "border-foreground/10 bg-foreground/5 text-foreground/50 hover:bg-foreground/10 hover:text-foreground"
+                                }`}
+                            >
+                                {page}
+                            </button>
+                        ) : (
+                            <span key={`${page}-${index}`} className="px-1 text-xs font-black text-foreground/30">
+                                {page}
+                            </span>
+                        )
+                    ))}
+                </div>
+
+                <button
+                    type="button"
+                    onClick={() => onPageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="rounded-xl border border-foreground/10 bg-foreground/5 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-foreground/60 transition-all hover:bg-foreground/10 hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
+                >
+                    Next
+                </button>
+            </div>
+        </nav>
+    );
+}
 
 export default function Home() {
     const { data: session } = useSession();
     const router = useRouter();
+    const userTimelinesRef = useRef<HTMLDivElement>(null);
+    const featuredTimelinesRef = useRef<HTMLDivElement>(null);
 
     const [userTimelines, setUserTimelines] = useState<any[]>([]);
     const [featuredTimelines, setFeaturedTimelines] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [userCategory, setUserCategory] = useState("All");
+    const [userPage, setUserPage] = useState(1);
+    const [featuredCategory, setFeaturedCategory] = useState("All");
+    const [featuredPage, setFeaturedPage] = useState(1);
 
     useEffect(() => {
         const fetchAllData = async () => {
@@ -42,6 +200,42 @@ export default function Home() {
 
     const handleCreateTimeline = () => {
         router.push(session ? "/create" : "/signup");
+    };
+
+    const userCategories = useMemo(() => getTimelineCategories(userTimelines), [userTimelines]);
+    const featuredCategories = useMemo(() => getTimelineCategories(featuredTimelines), [featuredTimelines]);
+    const filteredUserTimelines = useMemo(
+        () => filterTimelinesByCategory(userTimelines, userCategory),
+        [userTimelines, userCategory],
+    );
+    const filteredFeaturedTimelines = useMemo(
+        () => filterTimelinesByCategory(featuredTimelines, featuredCategory),
+        [featuredTimelines, featuredCategory],
+    );
+    const userPageCount = Math.ceil(filteredUserTimelines.length / TIMELINES_PER_PAGE);
+    const featuredPageCount = Math.ceil(filteredFeaturedTimelines.length / TIMELINES_PER_PAGE);
+    const visibleUserTimelines = filteredUserTimelines.slice(
+        (userPage - 1) * TIMELINES_PER_PAGE,
+        userPage * TIMELINES_PER_PAGE,
+    );
+    const visibleFeaturedTimelines = filteredFeaturedTimelines.slice(
+        (featuredPage - 1) * TIMELINES_PER_PAGE,
+        featuredPage * TIMELINES_PER_PAGE,
+    );
+
+    const handleUserCategoryChange = (category: string) => {
+        setUserCategory(category);
+        setUserPage(1);
+    };
+
+    const handleFeaturedCategoryChange = (category: string) => {
+        setFeaturedCategory(category);
+        setFeaturedPage(1);
+    };
+
+    const handlePageChange = (page: number, setPage: (page: number) => void, section: HTMLDivElement | null) => {
+        setPage(page);
+        requestAnimationFrame(() => section?.scrollIntoView({ behavior: "smooth", block: "start" }));
     };
 
     return (
@@ -86,16 +280,24 @@ export default function Home() {
                 
                 {/* User's Own Timelines Section */}
                 {session && userTimelines.length > 0 && (
-                    <div className="mb-32">
-                        <div className="flex items-center gap-4 mb-12">
-                            <h2 className="text-3xl font-black text-foreground tracking-tight uppercase">Your Timelines</h2>
-                            <span className="px-3 py-1 bg-foreground/5 text-foreground/50 text-[10px] font-black rounded-full border border-foreground/10">
-                                {userTimelines.length}
-                            </span>
+                    <div ref={userTimelinesRef} className="mb-32 scroll-mt-28">
+                        <div className="flex flex-col gap-8 mb-12">
+                            <div className="flex items-center gap-4">
+                                <h2 className="text-3xl font-black text-foreground tracking-tight uppercase">Your Timelines</h2>
+                                <span className="px-3 py-1 bg-foreground/5 text-foreground/50 text-[10px] font-black rounded-full border border-foreground/10">
+                                    {filteredUserTimelines.length}
+                                </span>
+                            </div>
+
+                            <CategoryFilter
+                                categories={userCategories}
+                                selectedCategory={userCategory}
+                                onCategoryChange={handleUserCategoryChange}
+                            />
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-                            {userTimelines.map((timeline: any) => (
+                            {visibleUserTimelines.map((timeline: any) => (
                                 <TimelineCard
                                     key={timeline.id}
                                     id={timeline.id}
@@ -106,40 +308,64 @@ export default function Home() {
                                 />
                             ))}
                         </div>
+
+                        <Pagination
+                            currentPage={userPage}
+                            totalPages={userPageCount}
+                            onPageChange={(page) => handlePageChange(page, setUserPage, userTimelinesRef.current)}
+                        />
                     </div>
                 )}
 
                 {/* Featured Section */}
-                <div>
-                    <div className="flex items-center justify-between mb-12">
+                <div ref={featuredTimelinesRef} className="scroll-mt-28">
+                    <div className="flex flex-col gap-8 mb-12">
                         <div className="flex items-center gap-4">
                             <h2 className="text-3xl font-black text-foreground tracking-tight uppercase tracking-tighter">Featured Timelines</h2>
                             <div className="h-1 w-12 bg-indigo-500 rounded-full" />
                         </div>
+
+                        <CategoryFilter
+                            categories={featuredCategories}
+                            selectedCategory={featuredCategory}
+                            onCategoryChange={handleFeaturedCategoryChange}
+                        />
                     </div>
 
                     {featuredTimelines.length === 0 && !isLoading ? (
                         <div className="p-20 text-center border-2 border-dashed border-foreground/5 rounded-[3rem]">
                             <p className="text-foreground/30 font-bold italic">The gallery is currently being curated.</p>
                         </div>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-                            {featuredTimelines.map((timeline: any) => (
-                                <TimelineCard
-                                    key={timeline.id}
-                                    id={timeline.id}
-                                    title={timeline.title}
-                                    description={timeline.description}
-                                    category={timeline.category}
-                                    tags={timeline.tags}
-                                />
-                            ))}
-
-                            {/* Skeleton loading state */}
-                            {isLoading && [1, 2, 3].map((i) => (
-                                <div key={i} className="h-64 bg-foreground/5 rounded-[2rem] animate-pulse" />
-                            ))}
+                    ) : filteredFeaturedTimelines.length === 0 && !isLoading ? (
+                        <div className="p-20 text-center border-2 border-dashed border-foreground/5 rounded-[3rem]">
+                            <p className="text-foreground/30 font-bold italic">No timelines found in this category.</p>
                         </div>
+                    ) : (
+                        <>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+                                {visibleFeaturedTimelines.map((timeline: any) => (
+                                    <TimelineCard
+                                        key={timeline.id}
+                                        id={timeline.id}
+                                        title={timeline.title}
+                                        description={timeline.description}
+                                        category={timeline.category}
+                                        tags={timeline.tags}
+                                    />
+                                ))}
+
+                                {/* Skeleton loading state */}
+                                {isLoading && [1, 2, 3].map((i) => (
+                                    <div key={i} className="h-64 bg-foreground/5 rounded-[2rem] animate-pulse" />
+                                ))}
+                            </div>
+
+                            <Pagination
+                                currentPage={featuredPage}
+                                totalPages={featuredPageCount}
+                                onPageChange={(page) => handlePageChange(page, setFeaturedPage, featuredTimelinesRef.current)}
+                            />
+                        </>
                     )}
                 </div>
             </div>
@@ -158,6 +384,8 @@ export default function Home() {
                     </div>
                 </section>
             )}
+
+            <Footer />
         </main>
     );
 }
