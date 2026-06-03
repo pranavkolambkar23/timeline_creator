@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { parseHistoricalDate } from "@/lib/historicalDate";
+import { compactHistoricalDisplayDate, parseHistoricalDate } from "@/lib/historicalDate";
 
 type ParsedEvent = {
     title: string;
@@ -302,6 +302,17 @@ export default function AiImportModal({ isOpen, onClose, onImport }: AiImportMod
                                     </div>
                                 )}
                             </div>
+
+                            {metadata && (metadata.title || metadata.description || metadata.tags?.length) && (
+                                <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3">
+                                    <p className="text-[10px] font-mono uppercase tracking-widest text-amber-300/60">Suggested Timeline Overview</p>
+                                    {metadata.title && <p className="mt-2 text-sm font-bold text-white">{metadata.title}</p>}
+                                    {metadata.description && <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-white/50">{metadata.description}</p>}
+                                    {metadata.tags?.length ? (
+                                        <p className="mt-2 text-[10px] font-mono uppercase tracking-wider text-amber-200/60">{metadata.tags.join(", ")}</p>
+                                    ) : null}
+                                </div>
+                            )}
                             
                             <div className="flex-grow overflow-y-auto border border-white/10 rounded-xl bg-[#080808]" style={{ scrollbarWidth: 'thin', scrollbarColor: '#ffffff10 transparent' }}>
                                 <table className="w-full text-left text-[11px] text-white/70">
@@ -316,7 +327,7 @@ export default function AiImportModal({ isOpen, onClose, onImport }: AiImportMod
                                     <tbody>
                                         {parsedEvents.map((ev, idx) => (
                                             <tr key={idx} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
-                                                <td className={`px-4 py-2 whitespace-nowrap ${ev.dateValid ? 'text-white/50' : 'text-rose-300'}`}>{ev.date || '—'}</td>
+                                                <td className={`px-4 py-2 whitespace-nowrap ${ev.dateValid ? 'text-white/50' : 'text-rose-300'}`}>{ev.dateValid ? compactHistoricalDisplayDate(ev.date) : ev.date || '—'}</td>
                                                 <td className="px-4 py-2 font-medium text-white/90">{ev.title}</td>
                                                 <td className="px-4 py-2 text-white/60">{ev.locationStr || '—'}</td>
                                                 <td className="px-4 py-2 text-right">

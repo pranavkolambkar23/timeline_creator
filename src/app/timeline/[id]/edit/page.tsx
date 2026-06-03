@@ -682,6 +682,7 @@ export default function EditTimeline() {
                 category={category}
                 tagsInput={tagsInput}
                 events={events}
+                features={masterGeoJson.features}
                 activeEventIndex={activeEventIndex}
                 saving={saving}
                 saveStatus={saveStatus}
@@ -691,6 +692,18 @@ export default function EditTimeline() {
                 onTagsInputChange={setTagsInput}
                 onActiveEventIndexChange={setActiveEventIndex}
                 onEventChange={handleEventChange}
+                onToggleFeatureLink={toggleFeatureLink}
+                onFeatureNameChange={handleFeatureNameChange}
+                onAiImport={(events, meta) => {
+                    handleImport(events);
+                    if (meta) {
+                        if (meta.title) setTitle(meta.title);
+                        if (meta.description) setDescription(meta.description);
+                        if (meta.category) setCategory(meta.category);
+                        if (meta.tags && meta.tags.length > 0) setTagsInput(meta.tags.join(", "));
+                    }
+                }}
+                onImport={handleImport}
                 onAddEvent={addEvent}
                 onRemoveEvent={removeEvent}
                 onSubmit={handleSubmit}

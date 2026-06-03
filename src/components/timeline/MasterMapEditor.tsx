@@ -65,6 +65,23 @@ function MasterMapEditor({ initialData, onChange, onDeleteFeature, selectedFeatu
   }, [initialData]);
 
   const [wip, setWip] = useState<[number, number][]>([]);
+  const wipRef = useRef<[number, number][]>([]);
+  const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingClickRef = useRef<[number, number] | null>(null);
+  const lastTapRef = useRef<{ time: number; point: { x: number; y: number } } | null>(null);
+  const lastTouchTapRef = useRef<{ time: number; point: { x: number; y: number } } | null>(null);
+  const recentTouchAtRef = useRef(0);
+  const suppressNextClickRef = useRef(false);
+
+  useEffect(() => {
+    wipRef.current = wip;
+  }, [wip]);
+
+  useEffect(() => {
+    return () => {
+      if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+    };
+  }, []);
 
   const STADIA_KEY = process.env.NEXT_PUBLIC_STADIA_MAPS_KEY;
   const mapStyle = useMemo(() => getMapStyle(mapStyleType, STADIA_KEY), [mapStyleType, STADIA_KEY]);
@@ -76,8 +93,66 @@ function MasterMapEditor({ initialData, onChange, onDeleteFeature, selectedFeatu
     onChange(toGeoJson(next));
   }, [onChange]);
 
+  const addWipPoint = useCallback((coord: [number, number]) => {
+    setWip(prev => {
+      const next = [...prev, coord];
+      wipRef.current = next;
+      return next;
+    });
+  }, []);
+
+  const flushPendingClick = useCallback(() => {
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+    }
+    if (pendingClickRef.current) {
+      const coord = pendingClickRef.current;
+      pendingClickRef.current = null;
+      addWipPoint(coord);
+    }
+  }, [addWipPoint]);
+
+  const finishDrawing = useCallback((finishCoord?: [number, number]) => {
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+    }
+    pendingClickRef.current = null;
+
+    const points = [...wipRef.current];
+    if (finishCoord) {
+      const last = points[points.length - 1];
+      if (!last || last[0] !== finishCoord[0] || last[1] !== finishCoord[1]) {
+        points.push(finishCoord);
+      }
+    }
+
+    let feature: StoredFeature | null = null;
+    if (activeTool === 'linestring' && points.length >= 2) {
+      feature = { id: uid(), geoType: 'LineString', coords: points, props: {} };
+    } else if (activeTool === 'polygon' && points.length >= 3) {
+      feature = { id: uid(), geoType: 'Polygon', coords: [[...points, points[0]]], props: {} };
+    }
+
+    if (!feature) return;
+
+    const f = feature;
+    setFeatures(prev => {
+      const next = [...prev, f];
+      setTimeout(() => emit(next), 0);
+      return next;
+    });
+    wipRef.current = [];
+    setWip([]);
+  }, [activeTool, emit]);
+
   const onMapClick = useCallback((e: any) => {
     if (activeTool === 'select') return;
+    if (suppressNextClickRef.current && (activeTool === 'linestring' || activeTool === 'polygon')) {
+      suppressNextClickRef.current = false;
+      return;
+    }
     const { lng, lat } = e.lngLat;
 
     if (activeTool === 'delete') {
@@ -125,32 +200,135 @@ function MasterMapEditor({ initialData, onChange, onDeleteFeature, selectedFeatu
       return;
     }
 
-    setWip(prev => [...prev, [lng, lat]]);
-  }, [activeTool, emit, onDeleteFeature]);
+    const isCoarsePointer =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(pointer: coarse)').matches &&
+      Date.now() - recentTouchAtRef.current > 700;
+    const canFinish =
+      activeTool === 'linestring'
+        ? wipRef.current.length >= 1
+        : activeTool === 'polygon' && wipRef.current.length >= 2;
+
+    if (isCoarsePointer && canFinish) {
+      const now = Date.now();
+      const point = e.point ?? mapRef.current?.getMap().project([lng, lat]);
+      const lastTap = lastTapRef.current;
+      const isDoubleTap = Boolean(
+        point &&
+        lastTap &&
+        now - lastTap.time <= 450 &&
+        Math.hypot(point.x - lastTap.point.x, point.y - lastTap.point.y) <= 32
+      );
+
+      if (isDoubleTap) {
+        lastTapRef.current = null;
+        const map = mapRef.current?.getMap();
+        const lastCoord = wipRef.current[wipRef.current.length - 1];
+        const lastPoint = map && lastCoord ? map.project(lastCoord) : null;
+        const finishCoord = lastPoint && point && Math.hypot(point.x - lastPoint.x, point.y - lastPoint.y) <= 32
+          ? undefined
+          : [lng, lat] as [number, number];
+        finishDrawing(finishCoord);
+        return;
+      }
+
+      if (point) lastTapRef.current = { time: now, point: { x: point.x, y: point.y } };
+    } else {
+      lastTapRef.current = null;
+    }
+
+    flushPendingClick();
+    pendingClickRef.current = [lng, lat];
+    clickTimerRef.current = setTimeout(() => {
+      clickTimerRef.current = null;
+      const coord = pendingClickRef.current;
+      pendingClickRef.current = null;
+      if (coord) addWipPoint(coord);
+    }, 220);
+  }, [activeTool, emit, onDeleteFeature, addWipPoint, finishDrawing, flushPendingClick]);
 
   const onMapDblClick = useCallback((e: any) => {
     e.preventDefault();
-    if (activeTool === 'linestring' && wip.length >= 2) {
-      const f: StoredFeature = { id: uid(), geoType: 'LineString', coords: wip, props: {} };
-      setFeatures(prev => {
-        const next = [...prev, f];
-        setTimeout(() => emit(next), 0);
-        return next;
-      });
-      setWip([]);
-    } else if (activeTool === 'polygon' && wip.length >= 3) {
-      const f: StoredFeature = { id: uid(), geoType: 'Polygon', coords: [[...wip, wip[0]]], props: {} };
-      setFeatures(prev => {
-        const next = [...prev, f];
-        setTimeout(() => emit(next), 0);
-        return next;
-      });
-      setWip([]);
+    e.originalEvent?.preventDefault?.();
+    finishDrawing([e.lngLat.lng, e.lngLat.lat]);
+  }, [finishDrawing]);
+
+  const onMapTouchEnd = useCallback((e: any) => {
+    if (activeTool !== 'linestring' && activeTool !== 'polygon') return;
+
+    recentTouchAtRef.current = Date.now();
+    const canFinish =
+      activeTool === 'linestring'
+        ? wipRef.current.length >= 1
+        : wipRef.current.length >= 2;
+
+    if (!canFinish) {
+      lastTouchTapRef.current = null;
+      return;
     }
-  }, [activeTool, wip, emit]);
+
+    const touch = e.originalEvent?.changedTouches?.[0];
+    const map = mapRef.current?.getMap();
+    const canvas = map?.getCanvas();
+    if (!touch || !map || !canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const point = { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+    const lastTap = lastTouchTapRef.current;
+    const now = Date.now();
+    const isDoubleTap = Boolean(
+      lastTap &&
+      now - lastTap.time <= 450 &&
+      Math.hypot(point.x - lastTap.point.x, point.y - lastTap.point.y) <= 32
+    );
+
+    if (!isDoubleTap) {
+      lastTouchTapRef.current = { time: now, point };
+      return;
+    }
+
+    e.preventDefault();
+    e.originalEvent?.preventDefault?.();
+    lastTouchTapRef.current = null;
+    suppressNextClickRef.current = true;
+    const lngLat = map.unproject([point.x, point.y]);
+    const lastCoord = wipRef.current[wipRef.current.length - 1];
+    const lastPoint = lastCoord ? map.project(lastCoord) : null;
+    const finishCoord = lastPoint && Math.hypot(point.x - lastPoint.x, point.y - lastPoint.y) <= 32
+      ? undefined
+      : [lngLat.lng, lngLat.lat] as [number, number];
+    finishDrawing(finishCoord);
+  }, [activeTool, finishDrawing]);
 
   const selectTool = (tool: DrawMode) => {
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+    }
+    pendingClickRef.current = null;
     setActiveTool(tool);
+    wipRef.current = [];
+    lastTapRef.current = null;
+    lastTouchTapRef.current = null;
+    suppressNextClickRef.current = false;
+    setWip([]);
+  };
+
+  const finishCurrentShape = () => {
+    flushPendingClick();
+    finishDrawing();
+  };
+
+  const cancelCurrentShape = () => {
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+    }
+    pendingClickRef.current = null;
+    wipRef.current = [];
+    lastTapRef.current = null;
+    lastTouchTapRef.current = null;
+    suppressNextClickRef.current = false;
     setWip([]);
   };
 
@@ -203,6 +381,10 @@ function MasterMapEditor({ initialData, onChange, onDeleteFeature, selectedFeatu
   };
 
   const isDeleteMode = activeTool === 'delete';
+  const canFinishCurrentShape =
+    activeTool === 'linestring'
+      ? wip.length >= 2
+      : activeTool === 'polygon' && wip.length >= 3;
 
   const tools: { id: DrawMode; label: string; hint: string; icon: React.ReactNode }[] = [
     {
@@ -248,6 +430,7 @@ function MasterMapEditor({ initialData, onChange, onDeleteFeature, selectedFeatu
         cursor={activeTool === 'select' ? 'grab' : activeTool === 'delete' ? 'pointer' : 'crosshair'}
         onClick={onMapClick}
         onDblClick={onMapDblClick}
+        onTouchEnd={onMapTouchEnd}
         doubleClickZoom={false}
         onLoad={onMapLoad}
       >
@@ -318,7 +501,7 @@ function MasterMapEditor({ initialData, onChange, onDeleteFeature, selectedFeatu
           ))}
           <div className="w-full h-px bg-white/10 mx-auto my-0.5" />
           <button
-            onClick={() => setWip([])}
+            onClick={cancelCurrentShape}
             title="Cancel current shape"
             disabled={wip.length === 0}
             className="w-10 h-10 rounded-xl flex items-center justify-center text-amber-400/50 hover:bg-amber-500/10 hover:text-amber-400 transition-all disabled:opacity-20 disabled:cursor-not-allowed"
@@ -346,9 +529,22 @@ function MasterMapEditor({ initialData, onChange, onDeleteFeature, selectedFeatu
             </button>
           ))}
           <div className="mx-auto my-0.5 h-px w-full bg-white/10" />
+          {canFinishCurrentShape && (
+            <button
+              type="button"
+              onClick={finishCurrentShape}
+              title="Finish current shape"
+              aria-label="Finish current shape"
+              className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-lg shadow-emerald-500/30 transition-all active:scale-95"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </button>
+          )}
           <button
             type="button"
-            onClick={() => setWip([])}
+            onClick={cancelCurrentShape}
             title="Cancel current shape"
             aria-label="Cancel current shape"
             disabled={wip.length === 0}

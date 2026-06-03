@@ -200,6 +200,24 @@ export function historicalDisplayDate(event: StoredHistoricalDate) {
         : date.toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
 }
 
+export function compactHistoricalDisplayDate(value: unknown) {
+    const parsed = parseHistoricalDate(value);
+    if (!parsed) return String(value ?? "").trim() || "No date";
+
+    const prefix = parsed.isApproximate ? "c. " : "";
+    const year = `${Math.abs(parsed.historicalYear)}${parsed.historicalYear < 0 ? " BCE" : ""}`;
+    if (parsed.datePrecision === "exact" && parsed.historicalDay && parsed.historicalMonth) {
+        return `${prefix}${String(parsed.historicalDay).padStart(2, "0")}-${String(parsed.historicalMonth).padStart(2, "0")}-${year}`;
+    }
+    if (parsed.datePrecision === "month" && parsed.historicalMonth) {
+        return `${prefix}${String(parsed.historicalMonth).padStart(2, "0")}-${year}`;
+    }
+    if (parsed.datePrecision === "year") {
+        return `${prefix}${year}`;
+    }
+    return parsed.displayDate;
+}
+
 export function historicalSortValue(event: StoredHistoricalDate) {
     if (typeof event.historicalYear === "number") {
         return event.historicalYear * 10000 + (event.historicalMonth ?? 0) * 100 + (event.historicalDay ?? 0);
