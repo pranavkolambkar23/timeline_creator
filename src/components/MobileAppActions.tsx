@@ -22,6 +22,13 @@ export default function MobileAppActions({
 
     return (
         <div className="flex flex-col gap-2">
+            <Link href="/" onClick={onNavigate} className={actionClass}>
+                <svg className={iconClass} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 12l9-9 9 9M5 10v10h14V10" />
+                </svg>
+                Home
+            </Link>
+
             <button type="button" onClick={onFullscreen} className={actionClass}>
                 <svg className={iconClass} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     {isFullscreen ? (

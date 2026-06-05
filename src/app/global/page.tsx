@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import Header from "@/components/Header";
+import MobileAppDrawer from "@/components/MobileAppDrawer";
 import GlobalMap from "@/components/timeline/GlobalMap";
 import { useSession } from "next-auth/react";
 import { compareHistoricalDates, historicalDisplayDate } from "@/lib/historicalDate";
@@ -37,6 +38,8 @@ type SavedCollection = {
 };
 
 type Granularity = 'All Time' | 'Century' | 'Decade' | 'Year' | 'Month' | 'Day';
+type MobileSheetSnap = 'low' | 'middle' | 'full';
+type MobileGlobalTab = 'events' | 'collections';
 
 type PlaceResult = {
     geometry?: {
@@ -181,6 +184,9 @@ export default function GlobalTimeline() {
     const searchInputRef = useRef<HTMLInputElement>(null);
     const [searchNotice, setSearchNotice] = useState<string | null>(null);
     const searchNoticeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [mobileSheetSnap, setMobileSheetSnap] = useState<MobileSheetSnap>('low');
+    const [mobileGlobalTab, setMobileGlobalTab] = useState<MobileGlobalTab>('events');
+    const mobileSheetDragStartRef = useRef<number | null>(null);
     const selectedCollection = collections.find(collection => collection.id === selectedCollectionId) ?? null;
     const activeCollection = collections.find(collection => collection.id === activeCollectionId) ?? null;
     const collectionEventIds = useMemo(() => selectedCollection?.collectionEvents
@@ -631,10 +637,33 @@ export default function GlobalTimeline() {
 
     const collectionCategories = useMemo(() => ["All", ...new Set(events.map(event => event.timeline.category))], [events]);
     const collectionTags = useMemo(() => ["All", ...new Set(events.flatMap(event => event.timeline.tags))], [events]);
+    const activeEvent = allAvailableEvents.find(event => event.id === activeEventId) ?? null;
+    const sortedSelectedCollectionEvents = useMemo(() => selectedCollection?.collectionEvents
+        .map(item => item.event)
+        .sort(compareHistoricalDates) ?? [], [selectedCollection]);
+    const mobileSheetHeight = mobileSheetSnap === 'full' ? 88 : mobileSheetSnap === 'middle' ? 56 : 24;
+    const mobileCollectionPreviewEvents = sortedSelectedCollectionEvents.slice(0, mobileSheetSnap === 'full' ? 40 : 10);
+
+    const snapMobileSheet = (snap: MobileSheetSnap) => {
+        setMobileSheetSnap(snap);
+    };
+
+    const finishMobileSheetDrag = (clientY: number) => {
+        const startY = mobileSheetDragStartRef.current;
+        mobileSheetDragStartRef.current = null;
+        if (startY === null) return;
+        const distance = clientY - startY;
+        if (distance < -40) {
+            snapMobileSheet(mobileSheetSnap === 'low' ? 'middle' : 'full');
+        } else if (distance > 40) {
+            snapMobileSheet(mobileSheetSnap === 'full' ? 'middle' : 'low');
+        }
+    };
 
     return (
         <div ref={containerRef} className="h-screen flex flex-col bg-[#080808] text-white overflow-hidden relative font-sans">
             {!isFullscreen && <Header />}
+            {isFullscreen && <MobileAppDrawer isAdmin={session?.user?.role === "ADMIN"} />}
 
             <div className="flex-grow flex relative h-full w-full">
                 {/* 100% Background Map */}
@@ -643,14 +672,18 @@ export default function GlobalTimeline() {
                         events={activeEvents} 
                         activeEventId={activeEventId}
                         flyToLocation={flyToLocation}
-                        onEventClick={(id) => setActiveEventId(id)}
+                        onEventClick={(id) => {
+                            setActiveEventId(id);
+                            snapMobileSheet('low');
+                        }}
+                        onMapInteract={() => snapMobileSheet('low')}
                         onAddToCollection={addToCollection}
                         canAddToCollection={canEditCollections}
                     />
                 </div>
 
                 {/* --- TOP BAR (Search & Controls) --- */}
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 w-[90%] max-w-5xl flex items-center justify-between gap-4 pointer-events-none">
+                <div className="absolute top-4 left-1/2 z-10 hidden w-[90%] max-w-5xl -translate-x-1/2 items-center justify-between gap-4 pointer-events-none md:flex">
                     
                     {/* Left: Mode Toggles */}
                     <div className="flex bg-[#060606]/80 backdrop-blur-xl p-1.5 rounded-xl border border-white/10 shadow-2xl pointer-events-auto">
@@ -819,7 +852,7 @@ export default function GlobalTimeline() {
                 </div>
 
                 {/* --- EVENTS DRAWER --- */}
-                <div className={`absolute top-0 right-0 bottom-0 w-96 bg-[#060606]/95 backdrop-blur-3xl border-l border-white/10 z-40 transform transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] shadow-[-20px_0_50px_rgba(0,0,0,0.8)] flex flex-col ${isEventsOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+                <div className={`absolute top-0 right-0 bottom-0 z-40 hidden w-96 transform flex-col border-l border-white/10 bg-[#060606]/95 backdrop-blur-3xl transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] md:flex ${isEventsOpen ? 'translate-x-0 shadow-[-20px_0_50px_rgba(0,0,0,0.8)]' : 'translate-x-full shadow-none'}`}>
                     <div className="p-6 border-b border-white/5 bg-black/20">
                         <div className="flex items-center justify-between mb-4">
                             <div>
@@ -918,7 +951,7 @@ export default function GlobalTimeline() {
                 </div>
 
                 {/* --- COLLECTIONS DRAWER --- */}
-                <div className={`absolute top-0 right-0 bottom-0 w-[440px] bg-[#060606]/95 backdrop-blur-3xl border-l border-white/10 z-40 transform transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] shadow-[-20px_0_50px_rgba(0,0,0,0.8)] flex flex-col ${isCollectionsOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+                <div className={`absolute top-0 right-0 bottom-0 z-40 hidden w-[440px] transform flex-col border-l border-white/10 bg-[#060606]/95 backdrop-blur-3xl transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] md:flex ${isCollectionsOpen ? 'translate-x-0 shadow-[-20px_0_50px_rgba(0,0,0,0.8)]' : 'translate-x-full shadow-none'}`}>
                     <div className="p-6 border-b border-white/5 flex items-center justify-between bg-black/20">
                         <div>
                             <h3 className="font-bold text-white tracking-tight">Collections</h3>
@@ -1161,8 +1194,512 @@ export default function GlobalTimeline() {
                     </div>
                 </div>
 
+                {/* --- MOBILE MAP UI --- */}
+                <div className="absolute inset-x-0 top-3 z-30 px-3 md:hidden">
+                    <div className="relative mx-auto max-w-md">
+                        <div className="relative rounded-2xl border border-white/10 bg-[#060606]/95 shadow-[0_16px_40px_rgba(0,0,0,0.45)] backdrop-blur-2xl">
+                            <svg className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            <input
+                                ref={searchInputRef}
+                                type="text"
+                                placeholder="Explore places or events"
+                                value={searchQuery}
+                                onChange={(event) => {
+                                    setSearchQuery(event.target.value);
+                                    setIsSearchFocused(true);
+                                }}
+                                onFocus={() => setIsSearchFocused(true)}
+                                onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
+                                className="w-full rounded-2xl bg-transparent py-3 pl-11 pr-4 text-sm font-semibold text-white outline-none placeholder:text-white/35"
+                            />
+                        </div>
+
+                        {isSearchFocused && searchQuery && (
+                            <div className="custom-scrollbar absolute left-0 right-0 top-full z-50 mt-2 max-h-[52vh] overflow-y-auto rounded-2xl border border-white/10 bg-[#060606]/95 p-2 shadow-[0_22px_60px_rgba(0,0,0,0.75)] backdrop-blur-2xl">
+                                {isPlacesLoading && (
+                                    <div className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-white/40">Searching places...</div>
+                                )}
+
+                                {placeResults.length > 0 && (
+                                    <div className="border-b border-white/5 pb-2">
+                                        <p className="px-3 py-1 text-[9px] font-black uppercase tracking-widest text-white/45">Places</p>
+                                        {placeResults.map((place, index) => (
+                                            <button
+                                                key={`${place.properties.label || place.properties.name}-${index}`}
+                                                type="button"
+                                                onPointerDown={(event) => {
+                                                    event.preventDefault();
+                                                    handlePlaceSelect(place);
+                                                    snapMobileSheet('low');
+                                                }}
+                                                className="w-full rounded-xl px-3 py-2 text-left hover:bg-white/10"
+                                            >
+                                                <span className="block truncate text-sm font-bold text-white">{place.properties.name || place.properties.label}</span>
+                                                <span className="mt-1 block truncate text-xs text-white/40">{place.properties.label || [place.properties.region, place.properties.country].filter(Boolean).join(", ")}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {searchResults.inEra.length > 0 && (
+                                    <div className="py-2">
+                                        <p className="px-3 py-1 text-[9px] font-black uppercase tracking-widest text-indigo-300">Events in period</p>
+                                        {searchResults.inEra.map(event => (
+                                            <button
+                                                key={event.id}
+                                                type="button"
+                                                onPointerDown={(pointerEvent) => {
+                                                    pointerEvent.preventDefault();
+                                                    handleSearchSelect(event);
+                                                    snapMobileSheet('low');
+                                                }}
+                                                className="w-full rounded-xl px-3 py-2 text-left hover:bg-white/10"
+                                            >
+                                                <span className="block truncate text-sm font-bold text-white">{event.title}</span>
+                                                <span className="mt-1 block truncate text-xs text-white/40">{historicalDisplayDate(event)} - {event.timeline.title}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {searchResults.outEra.length > 0 && (
+                                    <div className="border-t border-white/5 py-2">
+                                        <p className="px-3 py-1 text-[9px] font-black uppercase tracking-widest text-white/40">Other periods</p>
+                                        {searchResults.outEra.map(event => (
+                                            <button
+                                                key={event.id}
+                                                type="button"
+                                                onPointerDown={(pointerEvent) => {
+                                                    pointerEvent.preventDefault();
+                                                    handleSearchSelect(event);
+                                                    snapMobileSheet('low');
+                                                }}
+                                                className="w-full rounded-xl px-3 py-2 text-left opacity-70 hover:bg-white/10 hover:opacity-100"
+                                            >
+                                                <span className="block truncate text-sm font-bold text-white">{event.title}</span>
+                                                <span className="mt-1 block truncate text-xs text-indigo-300">{historicalDisplayDate(event)}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {!isPlacesLoading && placeResults.length === 0 && searchResults.inEra.length === 0 && searchResults.outEra.length === 0 && (
+                                    <div className="px-4 py-5 text-center text-xs font-semibold text-white/40">No places or events found.</div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {searchNotice && (
+                    <div className="absolute left-3 right-3 top-32 z-40 rounded-xl border border-amber-400/25 bg-[#060606]/95 px-4 py-3 text-xs text-white/75 shadow-2xl backdrop-blur-xl md:hidden">
+                        <span className="font-bold text-amber-300">Location unavailable.</span> {searchNotice}
+                    </div>
+                )}
+
+                <section
+                    className="absolute inset-x-0 bottom-0 z-30 flex flex-col rounded-t-3xl border-t border-white/10 bg-[#060606]/95 shadow-[0_-18px_45px_rgba(0,0,0,0.5)] backdrop-blur-2xl transition-[height] duration-200 md:hidden"
+                    style={{ height: `${mobileSheetHeight}%` }}
+                    aria-label="Global timeline controls"
+                >
+                    <div
+                        className="flex h-8 shrink-0 touch-none cursor-row-resize items-center justify-center"
+                        role="separator"
+                        aria-label="Resize global timeline drawer"
+                        onPointerDown={(event) => {
+                            mobileSheetDragStartRef.current = event.clientY;
+                            event.currentTarget.setPointerCapture(event.pointerId);
+                        }}
+                        onPointerUp={(event) => finishMobileSheetDrag(event.clientY)}
+                        onPointerCancel={(event) => finishMobileSheetDrag(event.clientY)}
+                    >
+                        <div className="flex h-6 w-14 items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/5">
+                            <span className="h-1 w-1 rounded-full bg-white/45" />
+                            <span className="h-1 w-1 rounded-full bg-white/45" />
+                            <span className="h-1 w-1 rounded-full bg-white/45" />
+                        </div>
+                    </div>
+
+                    <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+                        {activeEvent ? (
+                            <div className="pb-4">
+                                {isCollectionPlaying && activeCollection && (
+                                    <div className="mb-3 rounded-2xl border border-indigo-400/20 bg-indigo-500/10 px-3 py-2">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <p className="text-[9px] font-black uppercase tracking-widest text-indigo-200">
+                                                    Event {collectionStep + 1} of {activeCollectionEventIds.length}
+                                                </p>
+                                                <p className="mt-1 truncate text-xs font-bold text-white/75">{activeCollection.name}</p>
+                                            </div>
+                                            <button type="button" onClick={() => setIsCollectionPlaying(false)} className="rounded-lg bg-white/5 p-1.5 text-white/55" aria-label="Stop collection playback">
+                                                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                                <div className="mb-3 flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">{historicalDisplayDate(activeEvent)}</p>
+                                        <h2 className="mt-1 line-clamp-2 text-lg font-black leading-tight text-white">{activeEvent.title}</h2>
+                                    </div>
+                                    <div className="flex shrink-0 items-center gap-1">
+                                        {isCollectionPlaying && (
+                                            <>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => selectCollectionStep(collectionStep - 1)}
+                                                    disabled={collectionStep === 0}
+                                                    className="rounded-xl bg-white/5 p-2 text-white/65 disabled:opacity-25"
+                                                    aria-label="Previous collection event"
+                                                >
+                                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+                                                    </svg>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => selectCollectionStep(collectionStep + 1)}
+                                                    disabled={collectionStep >= activeCollectionEventIds.length - 1}
+                                                    className="rounded-xl bg-white/5 p-2 text-white/65 disabled:opacity-25"
+                                                    aria-label="Next collection event"
+                                                >
+                                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                                                    </svg>
+                                                </button>
+                                            </>
+                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={() => setActiveEventId(null)}
+                                            className="rounded-xl bg-white/5 p-2 text-white/60"
+                                            aria-label="Close event details"
+                                        >
+                                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <p className="text-[10px] font-mono uppercase tracking-widest text-white/35">{activeEvent.timeline.title}</p>
+                                {mobileSheetSnap !== 'low' && (
+                                    <p className="mt-4 whitespace-pre-line text-sm font-medium leading-6 text-white/62">{activeEvent.description}</p>
+                                )}
+                            </div>
+                        ) : (
+                            <>
+                                <div className="mb-3 flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">Global Timeline</p>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsTimeJumpOpen(current => !current)}
+                                            className="mt-1 max-w-full truncate text-left text-2xl font-black leading-tight text-white"
+                                            aria-expanded={isTimeJumpOpen}
+                                            aria-label="Jump to a time period"
+                                        >
+                                            {timeBlock.label}
+                                        </button>
+                                        <p className="mt-1 text-[10px] font-mono uppercase tracking-widest text-white/35">{timeBlock.subLabel}</p>
+                                    </div>
+                                    <div className="flex shrink-0 rounded-full border border-white/10 bg-white/5 p-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => { setMode('featured'); setActiveCollectionId(null); setIsCollectionPlaying(false); }}
+                                            className={`rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-widest ${mode === 'featured' ? 'bg-indigo-500 text-white' : 'text-white/45'}`}
+                                        >
+                                            Featured
+                                        </button>
+                                        {session?.user && (
+                                            <button
+                                                type="button"
+                                                onClick={() => { setMode('personal'); setActiveCollectionId(null); setIsCollectionPlaying(false); }}
+                                                className={`rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-widest ${mode === 'personal' ? 'bg-indigo-500 text-white' : 'text-white/45'}`}
+                                            >
+                                                Mine
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {isTimeJumpOpen && (
+                                    <form onSubmit={handleTimeJump} className="mb-3 flex gap-2 rounded-2xl border border-white/10 bg-white/[0.035] p-2">
+                                        <input
+                                            type="number"
+                                            autoFocus
+                                            placeholder="Enter year"
+                                            value={timeJumpInput}
+                                            onChange={event => setTimeJumpInput(event.target.value)}
+                                            className="min-w-0 flex-1 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm font-semibold text-white outline-none placeholder:text-white/30 focus:border-indigo-400/50"
+                                        />
+                                        <button type="submit" className="rounded-xl bg-indigo-600 px-4 text-[10px] font-black uppercase tracking-widest text-white">
+                                            Jump
+                                        </button>
+                                    </form>
+                                )}
+
+                                {isCollectionPlaying && playingCollectionEvent && (
+                                    <div className="mb-3 rounded-2xl border border-indigo-400/20 bg-indigo-500/10 p-3">
+                                        <div className="mb-2 flex items-center justify-between gap-3">
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-indigo-200">Playing {collectionStep + 1} / {activeCollectionEventIds.length}</p>
+                                            <button type="button" onClick={() => setIsCollectionPlaying(false)} className="rounded-lg bg-white/5 p-1.5 text-white/55" aria-label="Stop collection playback">
+                                                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <p className="line-clamp-1 text-sm font-bold text-white">{playingCollectionEvent.title}</p>
+                                        <div className="mt-3 flex items-center gap-2">
+                                            <button type="button" onClick={() => selectCollectionStep(collectionStep - 1)} disabled={collectionStep === 0} className="rounded-xl bg-white/10 px-4 py-2 text-xs font-black text-white disabled:opacity-30">Prev</button>
+                                            <button type="button" onClick={() => selectCollectionStep(collectionStep + 1)} disabled={collectionStep >= activeCollectionEventIds.length - 1} className="flex-1 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-black uppercase tracking-widest text-white disabled:opacity-30">Next Event</button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {activeCollection && !isCollectionPlaying && (
+                                    <div className="mb-3 flex items-center justify-between gap-3 rounded-2xl border border-indigo-400/20 bg-indigo-500/10 px-3 py-2">
+                                        <div className="min-w-0">
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-indigo-200">Active Collection</p>
+                                            <p className="truncate text-sm font-bold text-white">{activeCollection.name}</p>
+                                        </div>
+                                        <button type="button" onClick={() => setActiveCollectionId(null)} className="rounded-lg bg-white/5 p-2 text-white/60" aria-label="Deactivate collection">
+                                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                )}
+
+                                <div className="mb-3 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                                    {(['All Time', 'Century', 'Decade', 'Year', 'Month', 'Day'] as Granularity[]).map(gran => (
+                                        <button
+                                            key={gran}
+                                            type="button"
+                                            onClick={() => setGranularity(gran)}
+                                            disabled={!!activeCollection}
+                                            className={`shrink-0 rounded-2xl border px-3 py-2 text-[10px] font-black uppercase tracking-widest disabled:opacity-40 ${granularity === gran ? 'border-indigo-400/50 bg-indigo-500 text-white' : 'border-white/10 bg-white/5 text-white/55'}`}
+                                        >
+                                            {gran}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <div className="mb-3 grid grid-cols-2 gap-2">
+                                    <button type="button" onClick={() => { setMobileGlobalTab('events'); snapMobileSheet('middle'); }} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left">
+                                        <span className="block text-[9px] font-black uppercase tracking-widest text-white/35">Browse</span>
+                                        <span className="mt-1 block text-sm font-black text-white">{activeEvents.length} Events</span>
+                                    </button>
+                                    <button type="button" onClick={() => { setMobileGlobalTab('collections'); snapMobileSheet('middle'); }} className={`rounded-2xl border px-4 py-3 text-left ${activeCollection ? 'border-indigo-400/35 bg-indigo-500/15' : 'border-white/10 bg-white/5'}`}>
+                                        <span className="block text-[9px] font-black uppercase tracking-widest text-white/35">Open</span>
+                                        <span className="mt-1 block text-sm font-black text-white">{collections.length} Collections</span>
+                                    </button>
+                                </div>
+
+                                {mobileSheetSnap !== 'low' && (
+                                    <>
+                                        <div className="mb-3 grid grid-cols-2 rounded-2xl border border-white/10 bg-white/5 p-1">
+                                            <button type="button" onClick={() => setMobileGlobalTab('events')} className={`rounded-xl py-2 text-[10px] font-black uppercase tracking-widest ${mobileGlobalTab === 'events' ? 'bg-white text-black' : 'text-white/50'}`}>Events</button>
+                                            <button type="button" onClick={() => setMobileGlobalTab('collections')} className={`rounded-xl py-2 text-[10px] font-black uppercase tracking-widest ${mobileGlobalTab === 'collections' ? 'bg-white text-black' : 'text-white/50'}`}>Collections</button>
+                                        </div>
+
+                                        {mobileGlobalTab === 'events' ? (
+                                            <div className="pb-4">
+                                                <div className="relative mb-3">
+                                                    <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                                    </svg>
+                                                    <input
+                                                        type="text"
+                                                        value={eventsDrawerQuery}
+                                                        onChange={(event) => setEventsDrawerQuery(event.target.value)}
+                                                        placeholder="Search events in this period"
+                                                        className="w-full rounded-2xl border border-white/10 bg-white/5 py-3 pl-10 pr-3 text-sm font-semibold text-white outline-none placeholder:text-white/30"
+                                                    />
+                                                </div>
+                                                {drawerEvents.groupedCurrentPeriodEvents.length === 0 && drawerEvents.outsidePeriodEvents.length === 0 ? (
+                                                    <div className="rounded-2xl border border-dashed border-white/10 p-5 text-center text-xs text-white/40">No events match this period and search.</div>
+                                                ) : (
+                                                    drawerEvents.groupedCurrentPeriodEvents.map(([group, groupedEvents]) => (
+                                                        <section key={group} className="mb-4">
+                                                            <p className="mb-2 rounded-xl bg-white/5 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-indigo-300">{group}</p>
+                                                            <div className="space-y-2">
+                                                                {groupedEvents.map(event => (
+                                                                    <button key={event.id} type="button" onClick={() => { handleSearchSelect(event); snapMobileSheet('low'); }} className="w-full rounded-2xl border border-white/10 bg-white/[0.035] p-3 text-left">
+                                                                        <span className="block text-sm font-bold leading-tight text-white">{event.title}</span>
+                                                                        <span className="mt-1 block text-[10px] font-mono uppercase tracking-wider text-white/35">{event.timeline.title}</span>
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </section>
+                                                    ))
+                                                )}
+                                                {drawerEvents.outsidePeriodEvents.length > 0 && (
+                                                    <section className="mt-4">
+                                                        <p className="mb-2 rounded-xl bg-white/5 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-white/40">Outside selected period</p>
+                                                        <div className="space-y-2">
+                                                            {drawerEvents.outsidePeriodEvents.map(event => (
+                                                                <button key={event.id} type="button" onClick={() => { handleSearchSelect(event); snapMobileSheet('low'); }} className="w-full rounded-2xl border border-white/10 bg-white/[0.025] p-3 text-left opacity-75">
+                                                                    <span className="block text-sm font-bold leading-tight text-white">{event.title}</span>
+                                                                    <span className="mt-1 block text-[10px] font-mono uppercase tracking-wider text-indigo-300">{historicalDisplayDate(event)}</span>
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </section>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="pb-4">
+                                                {canEditCollections && session?.user && (
+                                                    <div className="mb-3 flex gap-2">
+                                                        <input
+                                                            type="text"
+                                                            value={newCollectionName}
+                                                            onChange={event => setNewCollectionName(event.target.value)}
+                                                            onKeyDown={event => {
+                                                                if (event.key === "Enter") createCollection();
+                                                            }}
+                                                            placeholder="New collection"
+                                                            className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/30"
+                                                        />
+                                                        <button type="button" onClick={createCollection} className="rounded-2xl bg-indigo-600 px-4 text-[10px] font-black uppercase tracking-widest text-white">Create</button>
+                                                    </div>
+                                                )}
+
+                                                {collections.length > 0 ? (
+                                                    <div className="mb-4 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                                                        {collections.map(collection => (
+                                                            <button
+                                                                key={collection.id}
+                                                                type="button"
+                                                                onClick={() => setSelectedCollectionId(collection.id)}
+                                                                className={`shrink-0 rounded-2xl border px-3 py-2 text-left ${collection.id === selectedCollectionId ? 'border-indigo-400/45 bg-indigo-500/20 text-white' : 'border-white/10 bg-white/5 text-white/55'}`}
+                                                            >
+                                                                <span className="block max-w-44 truncate text-xs font-bold">{collection.name}</span>
+                                                                <span className="mt-1 block text-[9px] font-mono uppercase tracking-widest opacity-60">{collection.collectionEvents.length} events</span>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <div className="rounded-2xl border border-dashed border-white/10 p-5 text-center text-xs text-white/40">{canEditCollections ? "Create a collection to build a saved custom timeline." : "No collections are available yet."}</div>
+                                                )}
+
+                                                {selectedCollection && (
+                                                    <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-3">
+                                                        <div className="mb-3 flex items-start justify-between gap-3">
+                                                            <div className="min-w-0">
+                                                                <h3 className="truncate text-base font-black text-white">{selectedCollection.name}</h3>
+                                                                <p className="mt-1 text-[10px] font-mono uppercase tracking-widest text-white/35">{collectionEventIds.length} events</p>
+                                                            </div>
+                                                            {canEditCollections && (
+                                                                <button type="button" onClick={deleteSelectedCollection} className="rounded-xl bg-red-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-red-300">Delete</button>
+                                                            )}
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => activeCollectionId === selectedCollection.id ? setActiveCollectionId(null) : activateCollection(selectedCollection)}
+                                                                disabled={collectionEventIds.length === 0}
+                                                                className={`rounded-xl px-3 py-2.5 text-[10px] font-black uppercase tracking-widest disabled:opacity-30 ${activeCollectionId === selectedCollection.id ? 'bg-red-500/15 text-red-300' : 'bg-indigo-600 text-white'}`}
+                                                            >
+                                                                {activeCollectionId === selectedCollection.id ? 'Deactivate' : 'Activate'}
+                                                            </button>
+                                                            <button type="button" onClick={() => activateCollection(selectedCollection, true)} disabled={collectionEventIds.length === 0} className="rounded-xl bg-white/10 px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-30">Play</button>
+                                                        </div>
+
+                                                        {collectionEventIds.length > 0 && (
+                                                            <div className="mt-4 space-y-2">
+                                                                {mobileCollectionPreviewEvents.map((event, index) => (
+                                                                    <button key={event.id} type="button" onClick={() => { handleSearchSelect(event); snapMobileSheet('low'); }} className="flex w-full items-start gap-3 rounded-xl bg-black/20 p-2.5 text-left">
+                                                                        <span className="pt-0.5 text-xs font-black text-indigo-300">{index + 1}</span>
+                                                                        <span className="min-w-0 flex-1">
+                                                                            <span className="block truncate text-sm font-bold text-white/90">{event.title}</span>
+                                                                            <span className="mt-1 block truncate text-[9px] font-mono uppercase tracking-wider text-white/35">{historicalDisplayDate(event)}</span>
+                                                                        </span>
+                                                                    </button>
+                                                                ))}
+                                                                {sortedSelectedCollectionEvents.length > mobileCollectionPreviewEvents.length && (
+                                                                    <button type="button" onClick={() => snapMobileSheet('full')} className="w-full rounded-xl border border-indigo-400/20 bg-indigo-500/10 py-2 text-[10px] font-black uppercase tracking-widest text-indigo-200">
+                                                                        Show {sortedSelectedCollectionEvents.length - mobileCollectionPreviewEvents.length} more events
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                {canEditCollections && selectedCollection && mobileSheetSnap === 'full' && (
+                                                    <div className="mt-4 border-t border-white/10 pt-4">
+                                                        <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-white/40">Find timelines and events</p>
+                                                        <input
+                                                            type="text"
+                                                            value={collectionSearchQuery}
+                                                            onChange={event => setCollectionSearchQuery(event.target.value)}
+                                                            placeholder="Search timeline or event"
+                                                            className="w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/30"
+                                                        />
+                                                        <div className="mt-2 grid grid-cols-2 gap-2">
+                                                            <select value={collectionCategoryFilter} onChange={event => setCollectionCategoryFilter(event.target.value)} className="rounded-xl border border-white/10 bg-[#111] px-2 py-2 text-xs text-white/70 outline-none">
+                                                                {collectionCategories.map(category => <option key={category}>{category}</option>)}
+                                                            </select>
+                                                            <select value={collectionTagFilter} onChange={event => setCollectionTagFilter(event.target.value)} className="rounded-xl border border-white/10 bg-[#111] px-2 py-2 text-xs text-white/70 outline-none">
+                                                                {collectionTags.map(tag => <option key={tag}>{tag}</option>)}
+                                                            </select>
+                                                        </div>
+                                                        <div className="mt-3 space-y-2">
+                                                            {collectionBuilderTimelines.map(timeline => {
+                                                                const isExpanded = expandedTimelineIds.includes(timeline.id);
+                                                                const includedCount = timeline.events.filter(event => collectionEventIds.includes(event.id)).length;
+                                                                return (
+                                                                    <div key={timeline.id} className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025]">
+                                                                        <div className="flex items-start gap-2 p-3">
+                                                                            <button type="button" onClick={() => setExpandedTimelineIds(current => current.includes(timeline.id) ? current.filter(id => id !== timeline.id) : [...current, timeline.id])} className="min-w-0 flex-1 text-left">
+                                                                                <span className="block truncate text-sm font-bold text-white/90">{timeline.title}</span>
+                                                                                <span className="mt-1 block text-[10px] font-mono uppercase tracking-wider text-white/35">{timeline.category} - {includedCount}/{timeline.events.length}</span>
+                                                                            </button>
+                                                                            <button type="button" onClick={() => addTimelineToCollection(timeline.id)} disabled={collectionSavingTimelineId !== null} className="rounded-xl bg-indigo-500/15 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-indigo-300 disabled:opacity-50">
+                                                                                {collectionSavingTimelineId === timeline.id ? "Adding" : "Add all"}
+                                                                            </button>
+                                                                        </div>
+                                                                        {isExpanded && (
+                                                                            <div className="space-y-1 border-t border-white/5 p-2">
+                                                                                {timeline.events.map(event => {
+                                                                                    const isIncluded = collectionEventIds.includes(event.id);
+                                                                                    return (
+                                                                                        <div key={event.id} className="flex items-center gap-2 rounded-xl px-2 py-2">
+                                                                                            <div className="min-w-0 flex-1">
+                                                                                                <p className="truncate text-xs text-white/80">{event.title}</p>
+                                                                                                <p className="mt-0.5 text-[9px] font-mono text-white/35">{historicalDisplayDate(event)}</p>
+                                                                                            </div>
+                                                                                            <button type="button" onClick={() => isIncluded ? removeFromCollection(event.id) : addToCollection(event.id)} className={`rounded-lg px-2 py-1 text-[9px] font-black uppercase tracking-widest ${isIncluded ? 'bg-white/5 text-white/45' : 'bg-indigo-500/15 text-indigo-300'}`}>
+                                                                                                {isIncluded ? "Remove" : "Add"}
+                                                                                            </button>
+                                                                                        </div>
+                                                                                    );
+                                                                                })}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                            </>
+                        )}
+                    </div>
+                </section>
+
                 {/* --- BOTTOM LEFT (The Time Scrubber) --- */}
-                <div className="absolute bottom-8 left-8 z-10 w-[600px] pointer-events-none flex flex-col items-start gap-4">
+                <div className="absolute bottom-8 left-8 z-10 hidden w-[600px] pointer-events-none flex-col items-start gap-4 md:flex">
                     
                     {isCollectionPlaying && playingCollectionEvent && (
                         <div className="w-[430px] max-w-[calc(100vw-4rem)] mb-3 rounded-2xl border border-white/10 bg-[#060606]/90 backdrop-blur-2xl p-5 shadow-[0_20px_50px_rgba(0,0,0,0.65)] pointer-events-auto">

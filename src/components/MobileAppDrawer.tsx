@@ -15,6 +15,7 @@ export default function MobileAppDrawer({ isAdmin }: { isAdmin: boolean }) {
             setIsFullscreen(Boolean(document.fullscreenElement));
         };
 
+        handleFullscreenChange();
         document.addEventListener("fullscreenchange", handleFullscreenChange);
         return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
     }, []);

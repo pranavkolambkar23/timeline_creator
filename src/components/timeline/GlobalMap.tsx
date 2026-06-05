@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useMemo, useRef, useState, useEffect } from 'react';
-import Map, { Source, Layer, NavigationControl, MapRef, Popup } from 'react-map-gl/maplibre';
+import Map, { Source, Layer, NavigationControl, MapRef, Popup, Marker } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import BaseMapSwitcher, { MapStyleType, getMapStyle } from './BaseMapSwitcher';
 
@@ -11,11 +11,12 @@ interface GlobalMapProps {
   activeEventId?: string | null;
   flyToLocation?: { longitude: number; latitude: number; zoom?: number; requestId: number } | null;
   onEventClick?: (eventId: string) => void;
+  onMapInteract?: () => void;
   onAddToCollection?: (eventId: string) => void;
   canAddToCollection?: boolean;
 }
 
-export default function GlobalMap({ events, activeEventId, flyToLocation, onEventClick, onAddToCollection, canAddToCollection = false }: GlobalMapProps) {
+export default function GlobalMap({ events, activeEventId, flyToLocation, onEventClick, onMapInteract, onAddToCollection, canAddToCollection = false }: GlobalMapProps) {
   const mapRef = useRef<MapRef>(null);
   const [mapStyleType, setMapStyleType] = useState<MapStyleType>('dark');
   const [hoverInfo, setHoverInfo] = useState<any>(null);
@@ -67,6 +68,24 @@ export default function GlobalMap({ events, activeEventId, flyToLocation, onEven
 
     return { type: 'FeatureCollection', features };
   }, [events]);
+
+  const activeEventCoordinates = useMemo<[number, number] | null>(() => {
+    if (!activeEventId) return null;
+    const event = events.find(e => e.id === activeEventId);
+    if (!event?.locationData) return null;
+    const data = event.locationData;
+    const rawFeatures: any[] =
+      data.type === 'FeatureCollection' && Array.isArray(data.features)
+        ? data.features
+        : data.type === 'Feature'
+        ? [data]
+        : [];
+    const geometry = rawFeatures[0]?.geometry;
+    if (geometry?.type === 'Point') return geometry.coordinates;
+    if (geometry?.type === 'LineString') return geometry.coordinates?.[0] ?? null;
+    if (geometry?.type === 'Polygon') return geometry.coordinates?.[0]?.[0] ?? null;
+    return null;
+  }, [activeEventId, events]);
 
   useEffect(() => {
     if (activeEventId && mapRef.current && isMapReady) {
@@ -195,6 +214,7 @@ export default function GlobalMap({ events, activeEventId, flyToLocation, onEven
     
     const feature = e.features?.[0];
     if (!feature) {
+        onMapInteract?.();
         setHoverInfo(null);
         return;
     }
@@ -251,6 +271,10 @@ export default function GlobalMap({ events, activeEventId, flyToLocation, onEven
         interactiveLayerIds={['clusters', 'unclustered-point', 'polygons-fill', 'lines']}
         onClick={onClick}
         onMove={(event) => setViewState(event.viewState)}
+        onDragStart={onMapInteract}
+        onZoomStart={onMapInteract}
+        onRotateStart={onMapInteract}
+        onPitchStart={onMapInteract}
         onLoad={() => setIsMapReady(true)}
         cursor="pointer"
       >
@@ -321,10 +345,26 @@ export default function GlobalMap({ events, activeEventId, flyToLocation, onEven
             </div>
           </Popup>
         )}
+
+        {activeEventCoordinates && (
+          <Marker longitude={activeEventCoordinates[0]} latitude={activeEventCoordinates[1]} anchor="bottom">
+            <div className="drop-shadow-[0_4px_8px_rgba(0,0,0,0.45)] md:hidden">
+              <svg className="h-9 w-9" viewBox="0 0 32 40" fill="none">
+                <path d="M16 39C16 39 30 25.5 30 14.8C30 6.63 23.73 1 16 1C8.27 1 2 6.63 2 14.8C2 25.5 16 39 16 39Z" fill="#6366F1" stroke="#111827" strokeWidth="2.5" />
+                <circle cx="16" cy="15" r="5" fill="#F8FAFC" />
+              </svg>
+            </div>
+          </Marker>
+        )}
       </Map>
 
       {/* Global override for mapbox popup background to be transparent so our custom div styles work */}
       <style dangerouslySetInnerHTML={{__html: `
+        @media (max-width: 767px) {
+            .universe-popup {
+                display: none !important;
+            }
+        }
         .universe-popup .maplibregl-popup-content {
             background: transparent !important;
             padding: 0 !important;
