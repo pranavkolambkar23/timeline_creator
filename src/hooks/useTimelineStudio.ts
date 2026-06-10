@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 
 export type EventType = {
     id?: string;
@@ -8,7 +8,19 @@ export type EventType = {
     linkedFeatureIds: string[];
 };
 
-export function useTimelineStudio() {
+export const TIMELINE_DRAFT_STORAGE_KEY = 'timeline_draft';
+export const TIMELINE_DRAFT_META_STORAGE_KEY = 'timeline_draft_meta';
+export const TIMELINE_DRAFT_TTL_MS = 48 * 60 * 60 * 1000;
+
+type TimelineDraftPayload = {
+    expiresAt: number;
+    events: EventType[];
+    masterGeoJson: any;
+    featureNames: Record<string, string>;
+};
+
+export function useTimelineStudio(options: { persistDraft?: boolean } = {}) {
+    const { persistDraft = false } = options;
     const [events, setEvents] = useState<EventType[]>([]);
     const [masterGeoJson, setMasterGeoJson] = useState<any>({ type: 'FeatureCollection', features: [] });
     
@@ -19,6 +31,63 @@ export function useTimelineStudio() {
 
     const featureNamesRef = useRef<Record<string, string>>({});
     const eventRefs = useRef<(HTMLDivElement | null)[]>([]);
+    const hasRestoredDraftRef = useRef(!persistDraft);
+
+    const clearDraft = useCallback(() => {
+        if (typeof window === 'undefined') return;
+        window.localStorage.removeItem(TIMELINE_DRAFT_STORAGE_KEY);
+        window.localStorage.removeItem(TIMELINE_DRAFT_META_STORAGE_KEY);
+    }, []);
+
+    useEffect(() => {
+        if (!persistDraft || typeof window === 'undefined') return;
+
+        try {
+            const rawDraft = window.localStorage.getItem(TIMELINE_DRAFT_STORAGE_KEY);
+            if (!rawDraft) {
+                hasRestoredDraftRef.current = true;
+                return;
+            }
+
+            const draft = JSON.parse(rawDraft) as TimelineDraftPayload;
+            if (!draft.expiresAt || Date.now() > draft.expiresAt) {
+                clearDraft();
+                hasRestoredDraftRef.current = true;
+                return;
+            }
+
+            if (Array.isArray(draft.events)) setEvents(draft.events);
+            if (draft.masterGeoJson) setMasterGeoJson(draft.masterGeoJson);
+            if (draft.featureNames) featureNamesRef.current = draft.featureNames;
+        } catch {
+            clearDraft();
+        } finally {
+            hasRestoredDraftRef.current = true;
+        }
+    }, [clearDraft, persistDraft]);
+
+    useEffect(() => {
+        if (!persistDraft || typeof window === 'undefined' || !hasRestoredDraftRef.current) return;
+
+        const timeout = window.setTimeout(() => {
+            const hasDraftContent = events.length > 0 || (masterGeoJson.features?.length ?? 0) > 0;
+
+            if (!hasDraftContent) {
+                window.localStorage.removeItem(TIMELINE_DRAFT_STORAGE_KEY);
+                return;
+            }
+
+            const payload: TimelineDraftPayload = {
+                expiresAt: Date.now() + TIMELINE_DRAFT_TTL_MS,
+                events,
+                masterGeoJson,
+                featureNames: featureNamesRef.current,
+            };
+            window.localStorage.setItem(TIMELINE_DRAFT_STORAGE_KEY, JSON.stringify(payload));
+        }, 1000);
+
+        return () => window.clearTimeout(timeout);
+    }, [events, masterGeoJson, persistDraft]);
 
     const handleEventChange = useCallback((index: number, field: keyof EventType, value: any) => {
         setEvents(prev => {
@@ -159,6 +228,7 @@ export function useTimelineStudio() {
         isAiModalOpen, setIsAiModalOpen,
         featureNamesRef, eventRefs,
         handleEventChange, toggleFeatureLink, addEvent, removeEvent, handleImport,
-        handleMapChange, handleDeleteFeature, handleFeatureNameChange
+        handleMapChange, handleDeleteFeature, handleFeatureNameChange,
+        clearDraft,
     };
 }

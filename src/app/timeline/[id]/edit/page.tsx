@@ -11,6 +11,8 @@ import { useTimelineStudio, EventType } from "@/hooks/useTimelineStudio";
 import MobileTimelineStudioDrawer from "@/components/timeline/MobileTimelineStudioDrawer";
 import { historicalDateInput, historicalDisplayDate, isValidHistoricalDate } from "@/lib/historicalDate";
 import HistoricalDateEditor from "@/components/timeline/HistoricalDateEditor";
+import { useConfirm } from "@/hooks/useConfirm";
+import { useToast } from "@/hooks/useToast";
 
 const CATEGORIES = ["General", "History", "Technology", "Science", "Art", "Sports"];
 
@@ -36,6 +38,8 @@ export default function EditTimeline() {
     const router = useRouter();
     const params = useParams();
     const id = params?.id as string;
+    const confirm = useConfirm();
+    const { showToast } = useToast();
 
     const [title, setTitle]       = useState("");
     const [description, setDescription] = useState("");
@@ -124,7 +128,13 @@ export default function EditTimeline() {
 
     // ─── Delete ───────────────────────────────────────────────────────────────
     const handleDelete = async () => {
-        if (!confirm("Are you sure you want to completely delete this timeline? This cannot be undone.")) return;
+        const shouldDelete = await confirm({
+            title: "Delete timeline?",
+            message: "Are you sure you want to completely delete this timeline? This cannot be undone.",
+            confirmLabel: "Delete",
+            variant: "danger",
+        });
+        if (!shouldDelete) return;
         setIsDeleting(true);
         try {
             const res = await fetch(`/api/timeline/${id}`, { method: 'DELETE' });
@@ -132,7 +142,7 @@ export default function EditTimeline() {
             router.push("/");
             router.refresh();
         } catch {
-            alert("Failed to delete timeline");
+            showToast("Failed to delete timeline.", "error");
             setIsDeleting(false);
         }
     };
@@ -141,7 +151,7 @@ export default function EditTimeline() {
     const handleSubmit = async () => {
         for (const [i, ev] of events.entries()) {
             if (!isValidHistoricalDate(ev.date)) {
-                alert(`Event "${ev.title || `#${i + 1}`}" is missing a valid date.`);
+                showToast(`Event "${ev.title || `#${i + 1}`}" is missing a valid date.`, "error");
                 return;
             }
         }
@@ -555,9 +565,15 @@ export default function EditTimeline() {
                                                 {/* Delete button shown by default, highlighted on hover */}
                                                 <button
                                                     type="button"
-                                                    onClick={(e) => {
+                                                    onClick={async (e) => {
                                                         e.stopPropagation();
-                                                        if (confirm(`Are you sure you want to delete event "${event.title || `#${index + 1}`}"?`)) {
+                                                        const shouldDelete = await confirm({
+                                                            title: "Delete event?",
+                                                            message: `Are you sure you want to delete "${event.title || `event ${index + 1}`}"?`,
+                                                            confirmLabel: "Delete",
+                                                            variant: "danger",
+                                                        });
+                                                        if (shouldDelete) {
                                                             removeEvent(index);
                                                         }
                                                     }}

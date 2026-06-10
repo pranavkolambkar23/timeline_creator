@@ -5,10 +5,12 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import Link from "next/link";
+import { useConfirm } from "@/hooks/useConfirm";
 
 export default function AdminPage() {
     const { data: session, status } = useSession();
     const router = useRouter();
+    const confirm = useConfirm();
 
     const [activeTab, setActiveTab] = useState<"timelines" | "feedback">("timelines");
     const [timelines, setTimelines] = useState<any[]>([]);
@@ -74,7 +76,13 @@ export default function AdminPage() {
     };
 
     const handleDeleteFeedback = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this feedback?")) return;
+        const shouldDelete = await confirm({
+            title: "Delete feedback?",
+            message: "Are you sure you want to delete this feedback?",
+            confirmLabel: "Delete",
+            variant: "danger",
+        });
+        if (!shouldDelete) return;
         try {
             const res = await fetch(`/api/feedback?id=${id}`, {
                 method: "DELETE",

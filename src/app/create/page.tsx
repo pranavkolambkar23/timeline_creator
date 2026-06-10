@@ -1,16 +1,20 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Header from "@/components/Header";
 import MasterMapEditor from "@/components/timeline/MasterMapEditor";
 import ImportModal from "@/components/timeline/ImportModal";
 import AiImportModal from "@/components/timeline/AiImportModal";
-import { useTimelineStudio, EventType } from "@/hooks/useTimelineStudio";
+import { TIMELINE_DRAFT_META_STORAGE_KEY, TIMELINE_DRAFT_TTL_MS, useTimelineStudio, EventType } from "@/hooks/useTimelineStudio";
+import { useConfirm } from "@/hooks/useConfirm";
+import { useToast } from "@/hooks/useToast";
 import StudioTour from "@/components/StudioTour";
 import MobileTimelineStudioDrawer from "@/components/timeline/MobileTimelineStudioDrawer";
-import { historicalDisplayDate, isValidHistoricalDate } from "@/lib/historicalDate";
+import { historicalDisplayDate, isValidHistoricalDate, compareHistoricalDates, historicalEventData } from "@/lib/historicalDate";
 import HistoricalDateEditor from "@/components/timeline/HistoricalDateEditor";
+import TimelineViewManager from "@/components/timeline/TimelineViewManager";
 
 const CATEGORIES = ["General", "History", "Technology", "Science", "Art", "Sports"];
 
@@ -33,7 +37,11 @@ function formatDateDisplay(dateStr: string): string {
 }
 
 export default function CreateTimeline() {
+    const { data: session } = useSession();
     const router = useRouter();
+    const confirm = useConfirm();
+    const { showToast } = useToast();
+    const hasRestoredMetaRef = useRef(false);
 
     const [title, setTitle]       = useState("");
     const [description, setDescription] = useState("");
@@ -41,6 +49,7 @@ export default function CreateTimeline() {
     const [tagsInput, setTagsInput] = useState("");
     const [saving, setSaving]     = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+    const [isPreviewMode, setIsPreviewMode] = useState(false);
 
     const {
         events, setEvents,
@@ -51,18 +60,71 @@ export default function CreateTimeline() {
         isAiModalOpen, setIsAiModalOpen,
         featureNamesRef, eventRefs,
         handleEventChange, toggleFeatureLink, addEvent, removeEvent, handleImport,
-        handleMapChange, handleDeleteFeature, handleFeatureNameChange
-    } = useTimelineStudio();
+        handleMapChange, handleDeleteFeature, handleFeatureNameChange,
+        clearDraft,
+    } = useTimelineStudio({ persistDraft: true });
+
+    useEffect(() => {
+        try {
+            const rawMeta = window.localStorage.getItem(TIMELINE_DRAFT_META_STORAGE_KEY);
+            if (!rawMeta) return;
+
+            const meta = JSON.parse(rawMeta);
+            if (!meta.expiresAt || Date.now() > meta.expiresAt) {
+                window.localStorage.removeItem(TIMELINE_DRAFT_META_STORAGE_KEY);
+                return;
+            }
+
+            if (typeof meta.title === "string") setTitle(meta.title);
+            if (typeof meta.description === "string") setDescription(meta.description);
+            if (typeof meta.category === "string") setCategory(meta.category);
+            if (typeof meta.tagsInput === "string") setTagsInput(meta.tagsInput);
+        } catch {
+            window.localStorage.removeItem(TIMELINE_DRAFT_META_STORAGE_KEY);
+        } finally {
+            hasRestoredMetaRef.current = true;
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!hasRestoredMetaRef.current) return;
+
+        const timeout = window.setTimeout(() => {
+            const hasMetaContent = Boolean(title.trim() || description.trim() || tagsInput.trim() || category !== "General");
+
+            if (!hasMetaContent) {
+                window.localStorage.removeItem(TIMELINE_DRAFT_META_STORAGE_KEY);
+                return;
+            }
+
+            window.localStorage.setItem(
+                TIMELINE_DRAFT_META_STORAGE_KEY,
+                JSON.stringify({
+                    expiresAt: Date.now() + TIMELINE_DRAFT_TTL_MS,
+                    title,
+                    description,
+                    category,
+                    tagsInput,
+                })
+            );
+        }, 1000);
+
+        return () => window.clearTimeout(timeout);
+    }, [title, description, category, tagsInput]);
 
     // ─── Submit ───────────────────────────────────────────────────────────────
     const handleSubmit = async () => {
+        if (!session) {
+            showToast("Your draft is saved for 48 hours. Please click Get Started or Login in the top navigation bar to save and publish it.", "info");
+            return;
+        }
         if (!title.trim() || !description.trim()) {
-            alert("Please provide a title and description");
+            showToast("Please provide a title and description.", "error");
             return;
         }
         for (const [i, ev] of events.entries()) {
             if (!isValidHistoricalDate(ev.date)) {
-                alert(`Event "${ev.title || `#${i + 1}`}" is missing a valid date.`);
+                showToast(`Event "${ev.title || `#${i + 1}`}" is missing a valid date.`, "error");
                 return;
             }
         }
@@ -86,6 +148,7 @@ export default function CreateTimeline() {
                 }),
             });
             if (!res.ok) throw new Error('Save failed');
+            clearDraft();
             setSaveStatus('saved');
             setTimeout(() => {
                 router.push("/");
@@ -120,7 +183,48 @@ export default function CreateTimeline() {
             </div>
 
             <div className="relative flex flex-grow overflow-hidden">
-
+                {isPreviewMode ? (
+                    <div className="w-full h-full overflow-y-auto custom-scrollbar relative z-[120] bg-background text-foreground light">
+                        <button
+                            type="button"
+                            onClick={() => setIsPreviewMode(false)}
+                            className="hidden md:flex fixed right-8 top-24 z-[100] items-center gap-2 rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-indigo-400 shadow-lg backdrop-blur-xl hover:bg-indigo-500/20 hover:text-indigo-300 transition-all active:scale-95"
+                            aria-label="Exit preview"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Exit Preview
+                        </button>
+                        <TimelineViewManager 
+                            timeline={{
+                                id: 'preview',
+                                title: title || 'Untitled Timeline',
+                                description: description || 'No description provided.',
+                                category: category || 'General',
+                                tags: tagsInput.split(',').map(t => t.trim()).filter(Boolean),
+                                events: [...events].map((ev, index) => {
+                                    const parsed = historicalEventData(ev.date);
+                                    return {
+                                        ...ev,
+                                        ...parsed,
+                                        id: ev.id || `preview_ev_${index}`,
+                                        displayDate: parsed?.displayDate || 'Unknown Date',
+                                        locationData: (() => {
+                                            const linked = masterGeoJson.features.filter((f: any) => ev.linkedFeatureIds.includes(f.id));
+                                            return linked.length > 0 ? { type: 'FeatureCollection', features: linked } : null;
+                                        })()
+                                    };
+                                }).sort(compareHistoricalDates),
+                                isFeatured: false,
+                                userId: 'preview'
+                            }} 
+                            isAdmin={false} 
+                            onExitPreview={() => setIsPreviewMode(false)}
+                        />
+                    </div>
+                ) : (
+                    <>
                 {/* ══════════════════════════════════════════════════════════════
                     LEFT — MAP CANVAS
                 ══════════════════════════════════════════════════════════════ */}
@@ -222,6 +326,27 @@ export default function CreateTimeline() {
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setIsPreviewMode(!isPreviewMode)}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[10px] font-mono transition-all active:scale-95 ${isPreviewMode ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300' : 'border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/20 text-white/60'}`}
+                            >
+                                {isPreviewMode ? (
+                                    <>
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <span>Exit Preview</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                        <span>Preview</span>
+                                    </>
+                                )}
+                            </button>
                             <button
                                 id="tour-ai-import"
                                 onClick={() => setIsAiModalOpen(true)}
@@ -431,18 +556,6 @@ export default function CreateTimeline() {
                                                         </div>
                                                     </div>
 
-                                                    {/* Linked layer dots */}
-                                                    {linkedCount > 0 && (
-                                                        <div className="flex-shrink-0 flex gap-0.5 mr-2">
-                                                            {event.linkedFeatureIds.slice(0, 4).map(fid => {
-                                                                const feat = masterGeoJson.features.find((f: any) => f.id === fid);
-                                                                const meta = feat ? (GEO_TYPE_META[feat.geometry.type] ?? GEO_TYPE_META.Point) : GEO_TYPE_META.Point;
-                                                                return <span key={fid} className={`w-1.5 h-1.5 rounded-full ${meta.color.replace('text-', 'bg-').replace('/400', '/60')}`} />;
-                                                            })}
-                                                            {linkedCount > 4 && <span className="text-[7px] font-mono text-white/20 ml-0.5">+{linkedCount - 4}</span>}
-                                                        </div>
-                                                    )}
-
                                                     {/* Chevron */}
                                                     <svg className={`w-3.5 h-3.5 text-white/20 flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -452,9 +565,15 @@ export default function CreateTimeline() {
                                                 {/* Delete button shown by default, highlighted on hover */}
                                                 <button
                                                     type="button"
-                                                    onClick={(e) => {
+                                                    onClick={async (e) => {
                                                         e.stopPropagation();
-                                                        if (confirm(`Are you sure you want to delete event "${event.title || `#${index + 1}`}"?`)) {
+                                                        const shouldDelete = await confirm({
+                                                            title: "Delete event?",
+                                                            message: `Are you sure you want to delete "${event.title || `event ${index + 1}`}"?`,
+                                                            confirmLabel: "Delete",
+                                                            variant: "danger",
+                                                        });
+                                                        if (shouldDelete) {
                                                             removeEvent(index);
                                                         }
                                                     }}
@@ -570,8 +689,11 @@ export default function CreateTimeline() {
                         </div>
                     </div>
                 </div>
+                </>
+                )}
             </div>
 
+            {!isPreviewMode && (
             <MobileTimelineStudioDrawer
                 mode="create"
                 title={title}
@@ -604,7 +726,10 @@ export default function CreateTimeline() {
                 onAddEvent={addEvent}
                 onRemoveEvent={removeEvent}
                 onSubmit={handleSubmit}
+                isPreviewMode={isPreviewMode}
+                onPreviewToggle={() => setIsPreviewMode(!isPreviewMode)}
             />
+            )}
             
             <ImportModal 
                 isOpen={isImportModalOpen} 

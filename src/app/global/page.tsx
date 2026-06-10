@@ -7,6 +7,7 @@ import MobileAppDrawer from "@/components/MobileAppDrawer";
 import GlobalMap from "@/components/timeline/GlobalMap";
 import { useSession } from "next-auth/react";
 import { compareHistoricalDates, historicalDisplayDate } from "@/lib/historicalDate";
+import { useConfirm } from "@/hooks/useConfirm";
 
 type GlobalEvent = {
     id: string;
@@ -139,6 +140,7 @@ const getCollectionGranularity = (collectionEvents: GlobalEvent[]): Granularity 
 
 export default function GlobalTimeline() {
     const { data: session } = useSession();
+    const confirm = useConfirm();
     const [mode, setMode] = useState<'featured' | 'personal'>('featured');
     const [events, setEvents] = useState<GlobalEvent[]>([]);
     const [loading, setLoading] = useState(true);
@@ -313,7 +315,14 @@ export default function GlobalTimeline() {
     };
 
     const deleteSelectedCollection = async () => {
-        if (!selectedCollection || !confirm(`Delete "${selectedCollection.name}"?`)) return;
+        if (!selectedCollection) return;
+        const shouldDelete = await confirm({
+            title: "Delete collection?",
+            message: `Delete "${selectedCollection.name}"?`,
+            confirmLabel: "Delete",
+            variant: "danger",
+        });
+        if (!shouldDelete) return;
         const response = await fetch(`/api/collections/${selectedCollection.id}`, { method: "DELETE" });
         if (!response.ok) return;
         setCollections(current => current.filter(collection => collection.id !== selectedCollection.id));
@@ -501,9 +510,14 @@ export default function GlobalTimeline() {
         return { inEra, outEra };
     }, [events, searchQuery, granularity, timeBlock]);
 
-    const handleSearchSelect = (ev: GlobalEvent) => {
+    const handleSearchSelect = async (ev: GlobalEvent) => {
         if (activeCollection && !activeCollectionEventIds.includes(ev.id)) {
-            const shouldLeaveCollection = confirm(`"${ev.title}" is outside "${activeCollection.name}". Leave the active collection and continue?`);
+            const shouldLeaveCollection = await confirm({
+                title: "Leave collection?",
+                message: `"${ev.title}" is outside "${activeCollection.name}". Leave the active collection and continue?`,
+                confirmLabel: "Continue",
+                variant: "info",
+            });
             if (!shouldLeaveCollection) return;
             setActiveCollectionId(null);
             setIsCollectionPlaying(false);

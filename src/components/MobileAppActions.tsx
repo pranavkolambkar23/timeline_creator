@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { signOut } from "next-auth/react";
 
 export default function MobileAppActions({
     isAdmin,
+    userEmail,
     onGuide,
     onFeedback,
     onFullscreen,
@@ -11,6 +13,7 @@ export default function MobileAppActions({
     onNavigate,
 }: {
     isAdmin: boolean;
+    userEmail?: string | null;
     onGuide: () => void;
     onFeedback: () => void;
     onFullscreen: () => void;
@@ -68,6 +71,29 @@ export default function MobileAppActions({
                     </svg>
                     Admin
                 </Link>
+            )}
+
+            {userEmail && (
+                <>
+                    <div className="my-1 h-px bg-foreground/10" />
+                    <div className="rounded-2xl border border-foreground/10 bg-foreground/[0.03] px-4 py-3">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-foreground/30">Signed in as</p>
+                        <p className="mt-1 truncate text-xs font-bold text-foreground/70">{userEmail}</p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            onNavigate?.();
+                            signOut();
+                        }}
+                        className="flex w-full items-center gap-3 rounded-2xl border border-rose-500/15 bg-rose-500/10 px-4 py-3 text-left text-[10px] font-black uppercase tracking-widest text-rose-400"
+                    >
+                        <svg className="h-4 w-4 shrink-0 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6A2.25 2.25 0 005.25 5.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3-3H9.75m9 0l-3-3m3 3l-3 3" />
+                        </svg>
+                        Sign Out
+                    </button>
+                </>
             )}
         </div>
     );

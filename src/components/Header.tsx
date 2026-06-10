@@ -209,7 +209,7 @@ export default function Header() {
             <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
         </header>
         <div className="h-[65px] md:hidden" aria-hidden="true" />
-        <MobileAppDrawer isAdmin={session?.user?.role === "ADMIN"} />
+        <MobileAppDrawer isAdmin={session?.user?.role === "ADMIN"} userEmail={session?.user?.email} />
         </>
     );
 }

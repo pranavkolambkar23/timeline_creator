@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import FeedbackModal from "./FeedbackModal";
 import MobileAppActions from "./MobileAppActions";
 
-export default function MobileAppDrawer({ isAdmin }: { isAdmin: boolean }) {
+export default function MobileAppDrawer({ isAdmin, userEmail }: { isAdmin: boolean; userEmail?: string | null }) {
     const [isOpen, setIsOpen] = useState(false);
     const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -85,6 +85,7 @@ export default function MobileAppDrawer({ isAdmin }: { isAdmin: boolean }) {
 
                     <MobileAppActions
                         isAdmin={isAdmin}
+                        userEmail={userEmail}
                         onGuide={() => {
                             setIsOpen(false);
                             window.dispatchEvent(new CustomEvent("open-onboarding-guide"));

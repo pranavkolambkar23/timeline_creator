@@ -5,6 +5,7 @@ import * as XLSX from "xlsx";
 import { EventType } from "@/hooks/useTimelineStudio";
 import { compactHistoricalDisplayDate, historicalDisplayDate, isValidHistoricalDate, parseHistoricalDate, parseImportedHistoricalDate } from "@/lib/historicalDate";
 import HistoricalDateEditor from "./HistoricalDateEditor";
+import { useConfirm } from "@/hooks/useConfirm";
 
 const CATEGORIES = ["General", "History", "Technology", "Science", "Art", "Sports"];
 
@@ -81,6 +82,8 @@ interface MobileTimelineStudioDrawerProps {
     onAddEvent: () => void;
     onRemoveEvent: (index: number) => void;
     onSubmit: () => void;
+    isPreviewMode?: boolean;
+    onPreviewToggle?: () => void;
 }
 
 function formatDate(date: string) {
@@ -832,11 +835,14 @@ export default function MobileTimelineStudioDrawer({
     onAddEvent,
     onRemoveEvent,
     onSubmit,
+    isPreviewMode,
+    onPreviewToggle,
 }: MobileTimelineStudioDrawerProps) {
     const [snap, setSnap] = useState<DrawerSnap>("middle");
     const [tab, setTab] = useState<StudioTab>("overview");
     const [dragHeight, setDragHeight] = useState<number | null>(null);
     const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
+    const confirm = useConfirm();
 
     const currentHeight = dragHeight ?? SNAP_HEIGHTS[snap];
 
@@ -897,14 +903,38 @@ export default function MobileTimelineStudioDrawer({
                         {mode === "create" ? "Create mode" : "Edit mode"} - {events.length} event{events.length === 1 ? "" : "s"}
                     </p>
                 </div>
-                <button
-                    type="button"
-                    onClick={onSubmit}
-                    disabled={saving}
-                    className="flex-shrink-0 rounded-xl border border-indigo-400/25 bg-indigo-500/15 px-4 py-2 text-[10px] font-mono uppercase tracking-[0.18em] text-indigo-200 transition active:scale-95 disabled:opacity-50"
-                >
-                    {statusLabel}
-                </button>
+                <div className="flex gap-2">
+                    <button
+                        type="button"
+                        onClick={onPreviewToggle}
+                        className={`flex items-center gap-1.5 flex-shrink-0 rounded-xl border px-3 py-2 text-[10px] font-mono uppercase tracking-[0.18em] transition active:scale-95 ${isPreviewMode ? "border-indigo-400/35 bg-indigo-500/20 text-indigo-200" : "border-white/[0.08] bg-white/[0.03] text-white/60 hover:text-white"}`}
+                    >
+                        {isPreviewMode ? (
+                            <>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span>Exit</span>
+                            </>
+                        ) : (
+                            <>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                <span>Preview</span>
+                            </>
+                        )}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onSubmit}
+                        disabled={saving}
+                        className="flex-shrink-0 rounded-xl border border-indigo-400/25 bg-indigo-500/15 px-4 py-2 text-[10px] font-mono uppercase tracking-[0.18em] text-indigo-200 transition active:scale-95 disabled:opacity-50"
+                    >
+                        {statusLabel}
+                    </button>
+                </div>
             </div>
 
             {snap !== "low" && (
@@ -1027,8 +1057,14 @@ export default function MobileTimelineStudioDrawer({
                                                             />
                                                             <button
                                                                 type="button"
-                                                                onClick={() => {
-                                                                    if (confirm(`Delete "${event.title || `event ${index + 1}`}"?`)) onRemoveEvent(index);
+                                                                onClick={async () => {
+                                                                    const shouldDelete = await confirm({
+                                                                        title: "Delete event?",
+                                                                        message: `Delete "${event.title || `event ${index + 1}`}"?`,
+                                                                        confirmLabel: "Delete",
+                                                                        variant: "danger",
+                                                                    });
+                                                                    if (shouldDelete) onRemoveEvent(index);
                                                                 }}
                                                                 className="text-xs text-rose-300/75"
                                                             >

@@ -21,12 +21,13 @@ interface TimelineViewManagerProps {
     userId: string;
   };
   isAdmin: boolean;
+  onExitPreview?: () => void;
 }
 
 type ViewMode = 'story' | 'hybrid' | 'map';
 type MobileViewMode = 'overview' | ViewMode;
 
-export default function TimelineViewManager({ timeline, isAdmin }: TimelineViewManagerProps) {
+export default function TimelineViewManager({ timeline, isAdmin, onExitPreview }: TimelineViewManagerProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('story');
   const [mobileViewMode, setMobileViewMode] = useState<MobileViewMode>('overview');
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -55,20 +56,35 @@ export default function TimelineViewManager({ timeline, isAdmin }: TimelineViewM
     <div className="w-full flex flex-col">
       <ViewerTour />
       <div className="fixed inset-0 z-[60] flex h-[100dvh] flex-col overflow-hidden bg-background md:hidden">
-        <Link
-          href="/"
-          className="fixed left-3 top-3 z-[90] rounded-xl border border-foreground/10 bg-background/80 p-2.5 text-foreground/60 shadow-lg backdrop-blur-xl"
-          aria-label="Return to homepage"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 12l9-9 9 9M5 10v10h14V10" />
-          </svg>
-        </Link>
+        {onExitPreview ? (
+          <button
+            type="button"
+            onClick={onExitPreview}
+            className="fixed left-3 top-3 z-[90] flex items-center gap-1.5 rounded-xl border border-foreground/10 bg-background/80 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-foreground/60 shadow-lg backdrop-blur-xl"
+            aria-label="Exit preview"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            Exit Preview
+          </button>
+        ) : (
+          <Link
+            href="/"
+            className="fixed left-3 top-3 z-[90] flex items-center gap-1.5 rounded-xl border border-foreground/10 bg-background/80 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-foreground/60 shadow-lg backdrop-blur-xl"
+            aria-label="Return to homepage"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 12l9-9 9 9M5 10v10h14V10" />
+            </svg>
+            Home
+          </Link>
+        )}
 
         <button
           type="button"
           onClick={toggleFullscreen}
-          className="fixed left-14 top-3 z-[90] rounded-xl border border-foreground/10 bg-background/80 p-2.5 text-foreground/60 shadow-lg backdrop-blur-xl"
+          className="fixed right-3 top-3 z-[90] flex items-center gap-1.5 rounded-xl border border-foreground/10 bg-background/80 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-foreground/60 shadow-lg backdrop-blur-xl md:hidden"
           aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
         >
           {isFullscreen ? (
@@ -80,6 +96,7 @@ export default function TimelineViewManager({ timeline, isAdmin }: TimelineViewM
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 9V4h5m6 0h5v5M4 15v5h5m11-5v5h-5" />
             </svg>
           )}
+          {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
         </button>
 
         {mobileViewMode === 'overview' && (
@@ -191,6 +208,7 @@ export default function TimelineViewManager({ timeline, isAdmin }: TimelineViewM
         isAdmin={isAdmin}
         mobileViewMode={mobileViewMode}
         onMobileViewModeChange={setMobileViewMode}
+        onExitPreview={onExitPreview}
       />
     </div>
   );

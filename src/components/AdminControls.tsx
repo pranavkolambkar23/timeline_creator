@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import FeedbackModal from "./FeedbackModal";
 import MobileAppActions from "./MobileAppActions";
+import { useToast } from "@/hooks/useToast";
 
 export default function AdminControls({ 
     timelineId, 
@@ -14,6 +15,7 @@ export default function AdminControls({
     isAdmin,
     mobileViewMode,
     onMobileViewModeChange,
+    onExitPreview,
 }: { 
     timelineId: string; 
     initialIsFeatured: boolean;
@@ -21,6 +23,7 @@ export default function AdminControls({
     isAdmin: boolean;
     mobileViewMode: "overview" | "story" | "hybrid" | "map";
     onMobileViewModeChange: (viewMode: "overview" | "story" | "hybrid" | "map") => void;
+    onExitPreview?: () => void;
 }) {
     const { data: session } = useSession();
     const isOwner = session?.user?.id === creatorId || isAdmin;
@@ -31,6 +34,7 @@ export default function AdminControls({
     const [isFullscreen, setIsFullscreen] = useState(false);
     const touchStartX = useRef<number | null>(null);
     const router = useRouter();
+    const { showToast } = useToast();
 
     useEffect(() => {
         const handleFullscreenChange = () => {
@@ -64,10 +68,11 @@ export default function AdminControls({
                 setIsFeatured(!isFeatured);
                 router.refresh();
             } else {
-                alert("Failed to update timeline status.");
+                showToast("Failed to update timeline status.", "error");
             }
         } catch (err) {
             console.error(err);
+            showToast("Failed to update timeline status.", "error");
         } finally {
             setIsLoading(false);
         }
@@ -242,10 +247,29 @@ export default function AdminControls({
                             </button>
                         )}
 
+                        {onExitPreview && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    onExitPreview();
+                                    setIsDrawerOpen(false);
+                                }}
+                                className="flex items-center justify-between gap-3 rounded-2xl border border-indigo-500/30 bg-indigo-600/10 px-4 py-3 text-indigo-500 hover:bg-indigo-600/20 transition-all active:scale-95"
+                            >
+                                <span className="text-[10px] font-black uppercase tracking-widest">Exit Preview</span>
+                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-500 text-white">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                            </button>
+                        )}
+
                         <div className="my-2 h-px bg-foreground/10" />
 
                         <MobileAppActions
                             isAdmin={isAdmin}
+                            userEmail={session?.user?.email}
                             onGuide={() => {
                                 setIsDrawerOpen(false);
                                 window.dispatchEvent(new CustomEvent("open-onboarding-guide"));

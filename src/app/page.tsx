@@ -199,7 +199,7 @@ export default function Home() {
     }, [session]);
 
     const handleCreateTimeline = () => {
-        router.push(session ? "/create" : "/signup");
+        router.push("/create");
     };
 
     const userCategories = useMemo(() => getTimelineCategories(userTimelines), [userTimelines]);
