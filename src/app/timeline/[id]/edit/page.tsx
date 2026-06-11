@@ -544,18 +544,6 @@ export default function EditTimeline() {
                                                         </div>
                                                     </div>
 
-                                                    {/* Linked layer dots */}
-                                                    {linkedCount > 0 && (
-                                                        <div className="flex-shrink-0 flex gap-0.5 mr-2">
-                                                            {event.linkedFeatureIds.slice(0, 4).map(fid => {
-                                                                const feat = masterGeoJson.features.find((f: any) => f.id === fid);
-                                                                const meta = feat ? (GEO_TYPE_META[feat.geometry.type] ?? GEO_TYPE_META.Point) : GEO_TYPE_META.Point;
-                                                                return <span key={fid} className={`w-1.5 h-1.5 rounded-full ${meta.color.replace('text-', 'bg-').replace('/400', '/60')}`} />;
-                                                            })}
-                                                            {linkedCount > 4 && <span className="text-[7px] font-mono text-white/20 ml-0.5">+{linkedCount - 4}</span>}
-                                                        </div>
-                                                    )}
-
                                                     {/* Chevron */}
                                                     <svg className={`w-3.5 h-3.5 text-white/20 flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
