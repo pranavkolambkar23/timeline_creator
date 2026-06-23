@@ -4,7 +4,7 @@
 import { useMemo, useRef, useState, useEffect } from 'react';
 import Map, { Source, Layer, NavigationControl, MapRef, Popup, Marker } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import BaseMapSwitcher, { MapStyleType, getMapStyle } from './BaseMapSwitcher';
+import BaseMapSwitcher, { MapStyleType, getInitialMapStyle, getMapStyle } from './BaseMapSwitcher';
 
 interface GlobalMapProps {
   events: any[];
@@ -18,7 +18,7 @@ interface GlobalMapProps {
 
 export default function GlobalMap({ events, activeEventId, flyToLocation, onEventClick, onMapInteract, onAddToCollection, canAddToCollection = false }: GlobalMapProps) {
   const mapRef = useRef<MapRef>(null);
-  const [mapStyleType, setMapStyleType] = useState<MapStyleType>('dark');
+  const [mapStyleType, setMapStyleType] = useState<MapStyleType>(getInitialMapStyle);
   const [hoverInfo, setHoverInfo] = useState<any>(null);
   const [isMapReady, setIsMapReady] = useState(false);
   const [viewState, setViewState] = useState({ longitude: 0, latitude: 20, zoom: 2 });

@@ -1,21 +1,19 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { compareHistoricalDates, historicalEventData } from "@/lib/historicalDate";
 
+// 📖 GET → Fetch a single timeline with all events
 export async function GET(
     req: Request,
-    { params }: { params: Promise<{ id: string }> } // ✅ Promise
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const { id } = await params; // ✅ MUST await
-
-        console.log("API ID:", id);
+        const { id } = await params;
 
         if (!id) {
-            return NextResponse.json(
-                { error: "Missing ID" },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: "Missing ID" }, { status: 400 });
         }
 
         const timeline = await prisma.timeline.findUnique({
@@ -25,37 +23,24 @@ export async function GET(
                     orderBy: { date: "asc" },
                 },
                 user: {
-                    select: {
-                        id: true,
-                        email: true,
-                    },
+                    select: { id: true, email: true },
                 },
             },
         });
 
         if (!timeline) {
-            return NextResponse.json(
-                { error: "Timeline not found" },
-                { status: 404 }
-            );
+            return NextResponse.json({ error: "Timeline not found" }, { status: 404 });
         }
 
         timeline.timelineEvents.sort(compareHistoricalDates);
         return NextResponse.json(timeline);
     } catch (error) {
         console.error("GET TIMELINE ERROR:", error);
-
-        return NextResponse.json(
-            { error: "Something went wrong" },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
     }
 }
 
 // 🔐 PATCH → Toggle Featured (Admin Only)
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-
 export async function PATCH(
     req: Request,
     { params }: { params: Promise<{ id: string }> }
@@ -63,7 +48,6 @@ export async function PATCH(
     try {
         const session = await getServerSession(authOptions);
 
-        // 1. Check if user is logged in AND is an ADMIN
         if (!session || session.user?.role !== "ADMIN") {
             return NextResponse.json({ error: "Unauthorized. Admin only." }, { status: 403 });
         }
@@ -84,7 +68,7 @@ export async function PATCH(
     }
 }
 
-// 🔐 PUT → Full Update (Title, Desc, Events, Spatial Data)
+// 🔐 PUT → Full Update (Title, Desc, Events, Spatial Data, Media)
 export async function PUT(
     req: Request,
     { params }: { params: Promise<{ id: string }> }
@@ -98,7 +82,7 @@ export async function PUT(
         }
 
         const body = await req.json();
-        const { title, description, category, tags, events } = body;
+        const { title, description, category, tags, events, coverImage } = body;
 
         if (!Array.isArray(events) || events.some((event: any) => !historicalEventData(event.date))) {
             return NextResponse.json({ error: "Each event must have a valid historical date" }, { status: 400 });
@@ -107,7 +91,7 @@ export async function PUT(
         // 1. Check ownership (Strict: ONLY creator can edit)
         const existing = await prisma.timeline.findUnique({
             where: { id },
-            select: { userId: true }
+            select: { userId: true },
         });
 
         if (!existing || existing.userId !== session.user.id) {
@@ -118,7 +102,7 @@ export async function PUT(
         const updatedTimeline = await prisma.$transaction(async (tx) => {
             // Delete existing events first
             await tx.timelineEvent.deleteMany({
-                where: { timelineId: id }
+                where: { timelineId: id },
             });
 
             // Then update timeline metadata + create fresh events
@@ -129,21 +113,22 @@ export async function PUT(
                     description,
                     category,
                     tags,
+                    coverImage: coverImage ?? null,
                     timelineEvents: {
                         create: events.map((event: any) => ({
                             title: event.title,
                             description: event.description,
                             ...historicalEventData(event.date)!,
                             locationData: event.locationData ?? null,
-                        }))
-                    }
+                            mediaData: event.mediaData ?? [],
+                        })),
+                    },
                 },
                 include: {
-                    timelineEvents: true
-                }
+                    timelineEvents: true,
+                },
             });
-        }, { timeout: 30000 }); // ← 30 second timeout for large spatial payloads
-
+        }, { timeout: 30000 }); // 30 second timeout for large spatial payloads
 
         return NextResponse.json(updatedTimeline);
     } catch (error) {
@@ -168,7 +153,7 @@ export async function DELETE(
         // Check ownership (Strict: ONLY creator can delete, or Admin)
         const existing = await prisma.timeline.findUnique({
             where: { id },
-            select: { userId: true }
+            select: { userId: true },
         });
 
         if (!existing) {
@@ -179,9 +164,7 @@ export async function DELETE(
             return NextResponse.json({ error: "Forbidden. Only the creator or admin can delete." }, { status: 403 });
         }
 
-        await prisma.timeline.delete({
-            where: { id }
-        });
+        await prisma.timeline.delete({ where: { id } });
 
         return NextResponse.json({ message: "Timeline deleted successfully" });
     } catch (error) {

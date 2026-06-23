@@ -10,6 +10,8 @@ export default function MobileAppActions({
     onFeedback,
     onFullscreen,
     isFullscreen,
+    onThemeToggle,
+    isDarkMode,
     onNavigate,
 }: {
     isAdmin: boolean;
@@ -18,6 +20,8 @@ export default function MobileAppActions({
     onFeedback: () => void;
     onFullscreen: () => void;
     isFullscreen: boolean;
+    onThemeToggle: () => void;
+    isDarkMode: boolean;
     onNavigate?: () => void;
 }) {
     const actionClass = "flex w-full items-center gap-3 rounded-2xl border border-foreground/10 bg-foreground/5 px-4 py-3 text-left text-[10px] font-black uppercase tracking-widest text-foreground/60";
@@ -41,6 +45,17 @@ export default function MobileAppActions({
                     )}
                 </svg>
                 {isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+            </button>
+
+            <button type="button" onClick={onThemeToggle} className={actionClass}>
+                <svg className={iconClass} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    {isDarkMode ? (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 3v1.5m0 15V21m9-9h-1.5M4.5 12H3m15.364-6.364-1.061 1.061M6.697 17.303l-1.061 1.061m12.728 0-1.061-1.061M6.697 6.697 5.636 5.636M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z" />
+                    ) : (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 12.79A8.5 8.5 0 1 1 11.21 3 6.5 6.5 0 0 0 21 12.79Z" />
+                    )}
+                </svg>
+                {isDarkMode ? "Light Mode" : "Dark Mode"}
             </button>
 
             <Link href="/global" onClick={onNavigate} className={actionClass}>

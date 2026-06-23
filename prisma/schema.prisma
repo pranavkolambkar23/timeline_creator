@@ -44,6 +44,7 @@ model Timeline {
 
   isApproved Boolean  @default(false)
   isFeatured Boolean  @default(false)
+  coverImage String?
   createdAt  DateTime @default(now())
 
   userId String
@@ -64,6 +65,7 @@ model TimelineEvent {
   datePrecision   String?
   isApproximate   Boolean  @default(false)
   locationData Json?
+  mediaData    Json?
 
   createdAt DateTime @default(now())
 

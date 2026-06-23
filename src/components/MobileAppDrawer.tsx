@@ -8,7 +8,16 @@ export default function MobileAppDrawer({ isAdmin, userEmail }: { isAdmin: boole
     const [isOpen, setIsOpen] = useState(false);
     const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [isDarkMode, setIsDarkMode] = useState(true);
     const touchStartX = useRef<number | null>(null);
+
+    useEffect(() => {
+        const savedTheme = localStorage.getItem("theme");
+        const shouldUseLight = savedTheme === "light";
+        setIsDarkMode(!shouldUseLight);
+        document.documentElement.classList.toggle("light", shouldUseLight);
+        document.documentElement.classList.toggle("dark", !shouldUseLight);
+    }, []);
 
     useEffect(() => {
         const handleFullscreenChange = () => {
@@ -28,6 +37,14 @@ export default function MobileAppDrawer({ isAdmin, userEmail }: { isAdmin: boole
         } else {
             await document.documentElement.requestFullscreen();
         }
+    };
+
+    const toggleTheme = () => {
+        const nextIsDark = !isDarkMode;
+        document.documentElement.classList.toggle("dark", nextIsDark);
+        document.documentElement.classList.toggle("light", !nextIsDark);
+        localStorage.setItem("theme", nextIsDark ? "dark" : "light");
+        setIsDarkMode(nextIsDark);
     };
 
     return (
@@ -96,6 +113,8 @@ export default function MobileAppDrawer({ isAdmin, userEmail }: { isAdmin: boole
                         }}
                         onFullscreen={toggleFullscreen}
                         isFullscreen={isFullscreen}
+                        onThemeToggle={toggleTheme}
+                        isDarkMode={isDarkMode}
                         onNavigate={() => setIsOpen(false)}
                     />
                 </aside>

@@ -6,6 +6,7 @@ export type EventType = {
     description: string;
     date: string;
     linkedFeatureIds: string[];
+    mediaData?: any[];
 };
 
 export const TIMELINE_DRAFT_STORAGE_KEY = 'timeline_draft';
@@ -121,7 +122,7 @@ export function useTimelineStudio(options: { persistDraft?: boolean } = {}) {
                 eventRefs.current[idx]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }, 100);
             setActiveEventIndex(idx);
-            return [...prev, { title: "New Event", description: "", date: "", linkedFeatureIds: [] }];
+            return [...prev, { title: "New Event", description: "", date: "", linkedFeatureIds: [], mediaData: [] }];
         });
     }, []);
 

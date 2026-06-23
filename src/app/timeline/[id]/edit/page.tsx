@@ -11,6 +11,7 @@ import { useTimelineStudio, EventType } from "@/hooks/useTimelineStudio";
 import MobileTimelineStudioDrawer from "@/components/timeline/MobileTimelineStudioDrawer";
 import { historicalDateInput, historicalDisplayDate, isValidHistoricalDate } from "@/lib/historicalDate";
 import HistoricalDateEditor from "@/components/timeline/HistoricalDateEditor";
+import MediaUploader from "@/components/timeline/MediaUploader";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useToast } from "@/hooks/useToast";
 
@@ -45,6 +46,9 @@ export default function EditTimeline() {
     const [description, setDescription] = useState("");
     const [category, setCategory] = useState("General");
     const [tagsInput, setTagsInput] = useState("");
+    const [coverImage, setCoverImage] = useState<string | null>(null);
+    const [coverImagePosition, setCoverImagePosition] = useState({ x: 50, y: 50 });
+    const [coverImageZoom, setCoverImageZoom] = useState(1);
     const [loading, setLoading]   = useState(true);
     const [saving, setSaving]     = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -75,6 +79,7 @@ export default function EditTimeline() {
                 setDescription(data.description);
                 setCategory(data.category);
                 setTagsInput(data.tags.join(", "));
+                setCoverImage(data.coverImage || null);
 
                 const featuresByCoordKey: Record<string, { feature: any; stableId: string }> = {};
 
@@ -111,6 +116,7 @@ export default function EditTimeline() {
                         description: e.description,
                         date: historicalDateInput(e),
                         linkedFeatureIds: linkedIds,
+                        mediaData: e.mediaData || [],
                     };
                 });
 
@@ -169,7 +175,7 @@ export default function EditTimeline() {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    title, description, category,
+                    title, description, category, coverImage,
                     tags: tagsInput.split(',').map(t => t.trim()).filter(Boolean),
                     events: finalEvents,
                 }),
@@ -413,6 +419,19 @@ export default function EditTimeline() {
                                     onChange={e => setTagsInput(e.target.value)}
                                 />
                             </div>
+
+                            <div className="pt-2">
+                                <span className="mb-2 block text-[8px] font-mono uppercase tracking-[0.3em] text-white/25">Cover Image</span>
+                                <MediaUploader 
+                                    media={coverImage ? [{ id: 'cover', url: coverImage, type: 'image', size: 0, title: 'Cover Image' }] : []} 
+                                    onChange={(media) => setCoverImage(media.length > 0 ? media[0].url : null)}
+                                    maxLimit={1}
+                                    imagePosition={coverImagePosition}
+                                    onImagePositionChange={setCoverImagePosition}
+                                    imageZoom={coverImageZoom}
+                                    onImageZoomChange={setCoverImageZoom}
+                                />
+                            </div>
                         </div>
 
                         {/* ── Feature Name Editor ── */}
@@ -620,6 +639,15 @@ export default function EditTimeline() {
                                                         />
                                                     </div>
 
+                                                    {/* Media */}
+                                                    <div>
+                                                        <label className="text-[7px] font-mono uppercase tracking-[0.3em] text-white/25 block mb-1">Images & Audio</label>
+                                                        <MediaUploader 
+                                                            media={event.mediaData || []} 
+                                                            onChange={(media) => handleEventChange(index, 'mediaData', media)}
+                                                        />
+                                                    </div>
+
                                                     {/* Layer linking */}
                                                     <div>
                                                         <div className="flex items-center justify-between mb-2">
@@ -685,6 +713,9 @@ export default function EditTimeline() {
                 description={description}
                 category={category}
                 tagsInput={tagsInput}
+                coverImage={coverImage}
+                coverImagePosition={coverImagePosition}
+                coverImageZoom={coverImageZoom}
                 events={events}
                 features={masterGeoJson.features}
                 activeEventIndex={activeEventIndex}
@@ -694,6 +725,9 @@ export default function EditTimeline() {
                 onDescriptionChange={setDescription}
                 onCategoryChange={setCategory}
                 onTagsInputChange={setTagsInput}
+                onCoverImageChange={setCoverImage}
+                onCoverImagePositionChange={setCoverImagePosition}
+                onCoverImageZoomChange={setCoverImageZoom}
                 onActiveEventIndexChange={setActiveEventIndex}
                 onEventChange={handleEventChange}
                 onToggleFeatureLink={toggleFeatureLink}

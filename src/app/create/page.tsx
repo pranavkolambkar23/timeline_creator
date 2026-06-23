@@ -15,6 +15,7 @@ import MobileTimelineStudioDrawer from "@/components/timeline/MobileTimelineStud
 import { historicalDisplayDate, isValidHistoricalDate, compareHistoricalDates, historicalEventData } from "@/lib/historicalDate";
 import HistoricalDateEditor from "@/components/timeline/HistoricalDateEditor";
 import TimelineViewManager from "@/components/timeline/TimelineViewManager";
+import MediaUploader from "@/components/timeline/MediaUploader";
 
 const CATEGORIES = ["General", "History", "Technology", "Science", "Art", "Sports"];
 
@@ -47,6 +48,9 @@ export default function CreateTimeline() {
     const [description, setDescription] = useState("");
     const [category, setCategory] = useState("General");
     const [tagsInput, setTagsInput] = useState("");
+    const [coverImage, setCoverImage] = useState<string | null>(null);
+    const [coverImagePosition, setCoverImagePosition] = useState({ x: 50, y: 50 });
+    const [coverImageZoom, setCoverImageZoom] = useState(1);
     const [saving, setSaving]     = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
     const [isPreviewMode, setIsPreviewMode] = useState(false);
@@ -79,6 +83,20 @@ export default function CreateTimeline() {
             if (typeof meta.description === "string") setDescription(meta.description);
             if (typeof meta.category === "string") setCategory(meta.category);
             if (typeof meta.tagsInput === "string") setTagsInput(meta.tagsInput);
+            if (typeof meta.coverImage === "string") setCoverImage(meta.coverImage);
+            if (
+                meta.coverImagePosition &&
+                typeof meta.coverImagePosition.x === "number" &&
+                typeof meta.coverImagePosition.y === "number"
+            ) {
+                setCoverImagePosition({
+                    x: Math.max(0, Math.min(100, meta.coverImagePosition.x)),
+                    y: Math.max(0, Math.min(100, meta.coverImagePosition.y)),
+                });
+            }
+            if (typeof meta.coverImageZoom === "number") {
+                setCoverImageZoom(Math.max(0.1, Math.min(5, meta.coverImageZoom)));
+            }
         } catch {
             window.localStorage.removeItem(TIMELINE_DRAFT_META_STORAGE_KEY);
         } finally {
@@ -105,12 +123,15 @@ export default function CreateTimeline() {
                     description,
                     category,
                     tagsInput,
+                    coverImage,
+                    coverImagePosition,
+                    coverImageZoom,
                 })
             );
         }, 1000);
 
         return () => window.clearTimeout(timeout);
-    }, [title, description, category, tagsInput]);
+    }, [title, description, category, tagsInput, coverImage, coverImagePosition, coverImageZoom]);
 
     // ─── Submit ───────────────────────────────────────────────────────────────
     const handleSubmit = async () => {
@@ -142,7 +163,7 @@ export default function CreateTimeline() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    title, description, category,
+                    title, description, category, coverImage,
                     tags: tagsInput.split(',').map(t => t.trim()).filter(Boolean),
                     events: finalEvents,
                 }),
@@ -202,6 +223,9 @@ export default function CreateTimeline() {
                                 title: title || 'Untitled Timeline',
                                 description: description || 'No description provided.',
                                 category: category || 'General',
+                                coverImage: coverImage,
+                                coverImagePosition,
+                                coverImageZoom,
                                 tags: tagsInput.split(',').map(t => t.trim()).filter(Boolean),
                                 events: [...events].map((ev, index) => {
                                     const parsed = historicalEventData(ev.date);
@@ -221,6 +245,8 @@ export default function CreateTimeline() {
                             }} 
                             isAdmin={false} 
                             onExitPreview={() => setIsPreviewMode(false)}
+                            onCoverImagePositionChange={setCoverImagePosition}
+                            onCoverImageZoomChange={setCoverImageZoom}
                         />
                     </div>
                 ) : (
@@ -423,6 +449,19 @@ export default function CreateTimeline() {
                                     className="flex-1 bg-white/[0.03] border border-white/[0.08] px-3 py-2 rounded-lg text-[10px] font-mono text-white/50 outline-none placeholder:text-white/15 hover:border-white/20 focus:border-indigo-500/30 transition-colors"
                                     value={tagsInput}
                                     onChange={e => setTagsInput(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="pt-2">
+                                <span className="mb-2 block text-[8px] font-mono uppercase tracking-[0.3em] text-white/25">Cover Image</span>
+                                <MediaUploader 
+                                    media={coverImage ? [{ id: 'cover', url: coverImage, type: 'image', size: 0, title: 'Cover Image' }] : []} 
+                                    onChange={(media) => setCoverImage(media.length > 0 ? media[0].url : null)}
+                                    maxLimit={1}
+                                    imagePosition={coverImagePosition}
+                                    onImagePositionChange={setCoverImagePosition}
+                                    imageZoom={coverImageZoom}
+                                    onImageZoomChange={setCoverImageZoom}
                                 />
                             </div>
                         </div>
@@ -632,6 +671,15 @@ export default function CreateTimeline() {
                                                         />
                                                     </div>
 
+                                                    {/* Media */}
+                                                    <div>
+                                                        <label className="text-[7px] font-mono uppercase tracking-[0.3em] text-white/25 block mb-1">Images & Audio</label>
+                                                        <MediaUploader 
+                                                            media={event.mediaData || []} 
+                                                            onChange={(media) => handleEventChange(index, 'mediaData', media)}
+                                                        />
+                                                    </div>
+
                                                     {/* Layer linking */}
                                                     <div>
                                                         <div className="flex items-center justify-between mb-2">
@@ -700,6 +748,9 @@ export default function CreateTimeline() {
                 description={description}
                 category={category}
                 tagsInput={tagsInput}
+                coverImage={coverImage}
+                coverImagePosition={coverImagePosition}
+                coverImageZoom={coverImageZoom}
                 events={events}
                 features={masterGeoJson.features}
                 activeEventIndex={activeEventIndex}
@@ -709,6 +760,9 @@ export default function CreateTimeline() {
                 onDescriptionChange={setDescription}
                 onCategoryChange={setCategory}
                 onTagsInputChange={setTagsInput}
+                onCoverImageChange={setCoverImage}
+                onCoverImagePositionChange={setCoverImagePosition}
+                onCoverImageZoomChange={setCoverImageZoom}
                 onActiveEventIndexChange={setActiveEventIndex}
                 onEventChange={handleEventChange}
                 onToggleFeatureLink={toggleFeatureLink}

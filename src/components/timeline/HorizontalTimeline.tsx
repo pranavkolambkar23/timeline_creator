@@ -13,6 +13,7 @@ type Event = {
     displayDate: string;
     datePrecision?: string | null;
     isApproximate?: boolean | null;
+    mediaData?: any[];
 };
 
 export default function HorizontalTimeline({ 
@@ -29,6 +30,7 @@ export default function HorizontalTimeline({
     const [isScrolled, setIsScrolled] = useState(false);
     const [windowScrollY, setWindowScrollY] = useState(0);
     const [activeIndex, setActiveIndex] = useState(0);
+    const [expandedEventIndex, setExpandedEventIndex] = useState<number | null>(null);
 
     const handleScroll = () => {
         if (!scrollContainerRef.current || events.length === 0) return;
@@ -197,7 +199,10 @@ export default function HorizontalTimeline({
 
                                 {/* Event Card */}
                                 <div 
-                                    onClick={() => scrollToEvent(index)}
+                                    onClick={() => {
+                                        if (isActive) setExpandedEventIndex(index);
+                                        else scrollToEvent(index);
+                                    }}
                                     className={`absolute left-1/2 -translate-x-1/2 w-[360px] transition-all duration-700 cursor-pointer hover:scale-[1.03] active:scale-[0.99] group/card ${
                                         isEven ? "bottom-[calc(50%+4rem)]" : "top-[calc(50%+4rem)]"
                                     } ${isActive ? "opacity-100 translate-y-0" : "opacity-30 translate-y-4"}`}
@@ -224,6 +229,22 @@ export default function HorizontalTimeline({
                                         }`}>
                                             {event.description}
                                         </p>
+
+                                        {isActive && (
+                                            <div className="mt-5 flex items-center gap-4 border-t border-foreground/5 pt-4">
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500 group-hover/card:text-indigo-400 transition-colors">
+                                                    Read Mode
+                                                </span>
+                                                {event.mediaData && event.mediaData.length > 0 && (
+                                                    <span className="flex items-center gap-1.5 text-[9px] font-mono text-foreground/40 bg-foreground/5 px-2 py-1 rounded-md">
+                                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                        </svg>
+                                                        {event.mediaData.length}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -262,6 +283,63 @@ export default function HorizontalTimeline({
             {!isScrolled && (
                 <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex items-center gap-4 animate-pulse opacity-40">
                     <span className="text-[10px] font-black uppercase tracking-[0.4em] text-foreground">Begin Story</span>
+                </div>
+            )}
+
+            {/* Read Mode Overlay */}
+            {expandedEventIndex !== null && events[expandedEventIndex] && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 md:p-12 animate-in fade-in duration-300">
+                    <div className="absolute inset-0 bg-background/95 backdrop-blur-3xl" onClick={() => setExpandedEventIndex(null)} />
+                    
+                    <div className="relative w-full max-w-4xl max-h-[90vh] bg-card border border-foreground/10 rounded-[2rem] shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-8 duration-500">
+                        {/* Close Button */}
+                        <button 
+                            onClick={() => setExpandedEventIndex(null)}
+                            className="absolute right-6 top-6 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-foreground/5 hover:bg-foreground/10 transition-colors"
+                        >
+                            <svg className="w-5 h-5 text-foreground/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+
+                        <div className="flex-1 overflow-y-auto custom-scrollbar p-8 md:p-12">
+                            <div className="max-w-2xl mx-auto space-y-8">
+                                <div className="space-y-4 text-center">
+                                    <span className="inline-block text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500 bg-indigo-500/10 px-4 py-1.5 rounded-full">
+                                        {events[expandedEventIndex].displayDate}
+                                    </span>
+                                    <h2 className="text-4xl md:text-5xl font-black tracking-tighter text-foreground">
+                                        {events[expandedEventIndex].title}
+                                    </h2>
+                                </div>
+                                
+                                <div className="w-24 h-1 bg-gradient-to-r from-indigo-500 to-purple-500 mx-auto rounded-full" />
+                                
+                                <div className="prose prose-invert max-w-none text-foreground/70 leading-loose">
+                                    <p className="text-lg whitespace-pre-wrap">{events[expandedEventIndex].description}</p>
+                                </div>
+
+                                {events[expandedEventIndex].mediaData && events[expandedEventIndex].mediaData!.length > 0 && (
+                                    <div className="pt-8 space-y-8 border-t border-foreground/10 mt-8">
+                                        {events[expandedEventIndex].mediaData!.map((media, i) => (
+                                            <div key={i} className="rounded-2xl overflow-hidden border border-foreground/10 bg-foreground/5">
+                                                {media.type === 'image' ? (
+                                                    <img src={media.url} alt={media.title || "Event media"} className="w-full h-auto object-cover" />
+                                                ) : media.type === 'audio' ? (
+                                                    <div className="p-6">
+                                                        <p className="text-xs font-mono uppercase tracking-widest text-foreground/40 mb-4">{media.title || "Audio Recording"}</p>
+                                                        <audio controls className="w-full">
+                                                            <source src={media.url} />
+                                                        </audio>
+                                                    </div>
+                                                ) : null}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

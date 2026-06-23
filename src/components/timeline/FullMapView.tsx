@@ -4,7 +4,8 @@ import { useMemo, useState, useRef, useCallback } from 'react';
 import Map, { Source, Layer, Marker, NavigationControl, Popup, MapRef } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import MapSearchBar from './MapSearchBar';
-import BaseMapSwitcher, { MapStyleType, getMapStyle } from './BaseMapSwitcher';
+import BaseMapSwitcher, { MapStyleType, getInitialMapStyle, getMapStyle } from './BaseMapSwitcher';
+import MobileImageViewer from './MobileImageViewer';
 
 interface FullMapViewProps {
   events: any[];
@@ -29,6 +30,7 @@ export default function FullMapView({ events }: FullMapViewProps) {
   const [mobileSheetSnap, setMobileSheetSnap] = useState<MobileSheetSnap>('middle');
   const [mobileSheetHeight, setMobileSheetHeight] = useState(MOBILE_SHEET_HEIGHTS.middle);
   const [isMobileSheetDragging, setIsMobileSheetDragging] = useState(false);
+  const [photoViewerIndex, setPhotoViewerIndex] = useState<number | null>(null);
   
   // GIS Layer Management State
   const eventsWithLocation = useMemo(() => events.filter(e => e.locationData), [events]);
@@ -36,7 +38,7 @@ export default function FullMapView({ events }: FullMapViewProps) {
     eventsWithLocation.map(e => e.id)
   );
   const [isLayerPanelOpen, setIsLayerPanelOpen] = useState(true);
-  const [mapStyleType, setMapStyleType] = useState<MapStyleType>('dark');
+  const [mapStyleType, setMapStyleType] = useState<MapStyleType>(getInitialMapStyle);
 
   const STADIA_KEY = process.env.NEXT_PUBLIC_STADIA_MAPS_KEY;
   const mapStyle = useMemo(() => getMapStyle(mapStyleType, STADIA_KEY), [mapStyleType, STADIA_KEY]);
@@ -83,6 +85,13 @@ export default function FullMapView({ events }: FullMapViewProps) {
       .filter((feature: any) => feature.geometry?.type === 'Point')
       .map((feature: any) => feature.geometry.coordinates);
   }, [selectedEvent]);
+  const selectedMedia = useMemo(() => {
+    const media = Array.isArray(selectedEvent?.mediaData) ? selectedEvent.mediaData : [];
+    return {
+      images: media.filter((item: any) => item?.type === 'image' && item.url),
+      audio: media.filter((item: any) => item?.type === 'audio' && item.url),
+    };
+  }, [selectedEvent]);
 
   const getFirstCoordinates = useCallback((locationData: any): [number, number] | null => {
     const firstFeature =
@@ -104,6 +113,7 @@ export default function FullMapView({ events }: FullMapViewProps) {
     if (!coordinates) return;
 
     setPopupInfo({ eventId: event.id, lngLat: coordinates });
+    setPhotoViewerIndex(null);
     setMobileSheetSnap(mobileSnap);
     setMobileSheetHeight(MOBILE_SHEET_HEIGHTS[mobileSnap]);
     mapRef.current?.flyTo({ center: coordinates, zoom: 6, duration: 1000, essential: true });
@@ -298,15 +308,15 @@ export default function FullMapView({ events }: FullMapViewProps) {
         </div>
       </div>
 
-      {/* Mobile Explorer Map bottom sheet */}
+      {/* Mobile Explorer Mode bottom sheet */}
       <section
         className={`absolute inset-x-0 bottom-0 z-30 flex flex-col rounded-t-3xl border-t border-foreground/10 bg-background/95 shadow-[0_-16px_40px_rgba(0,0,0,0.28)] backdrop-blur-xl md:hidden ${isMobileSheetDragging ? '' : 'transition-[height] duration-200'}`}
         style={{ height: `${mobileSheetHeight}%` }}
-        aria-label="Explorer map controls"
+        aria-label="Explorer mode controls"
       >
         <div
           role="separator"
-          aria-label="Resize explorer map drawer"
+          aria-label="Resize explorer mode drawer"
           aria-orientation="horizontal"
           aria-valuemin={16}
           aria-valuemax={88}
@@ -398,6 +408,7 @@ export default function FullMapView({ events }: FullMapViewProps) {
                   type="button"
                   onClick={() => {
                     setPopupInfo(null);
+                    setPhotoViewerIndex(null);
                   }}
                   className="rounded-lg bg-foreground/5 p-2 text-foreground/60"
                   aria-label="Close selected event"
@@ -410,7 +421,77 @@ export default function FullMapView({ events }: FullMapViewProps) {
             </div>
 
             {mobileSheetSnap !== 'low' && (
-              <p className="whitespace-pre-line text-sm font-medium leading-6 text-foreground/60">{selectedEvent.description}</p>
+              <div className="space-y-5">
+                <p className="whitespace-pre-line text-sm font-medium leading-6 text-foreground/60">{selectedEvent.description}</p>
+
+                {(selectedMedia.images.length > 0 || selectedMedia.audio.length > 0) && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/38">
+                        Event media
+                      </p>
+                      <span className="rounded-full bg-foreground/5 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-foreground/45">
+                        {selectedMedia.images.length + selectedMedia.audio.length} item{selectedMedia.images.length + selectedMedia.audio.length === 1 ? '' : 's'}
+                      </span>
+                    </div>
+
+                    {selectedMedia.images.length > 0 && (
+                      <div className="no-scrollbar -mx-5 flex snap-x gap-2 overflow-x-auto px-5 pb-1">
+                        {selectedMedia.images.map((media: any, index: number) => (
+                          <button
+                            key={media.id || `${media.url}-${index}`}
+                            type="button"
+                            onClick={() => setPhotoViewerIndex(index)}
+                            className="relative h-24 w-32 shrink-0 snap-start overflow-hidden rounded-2xl border border-foreground/10 bg-foreground/5 shadow-sm active:scale-[0.98]"
+                            aria-label={media.title || `${selectedEvent.title} photo ${index + 1}`}
+                          >
+                            <img
+                              src={media.url}
+                              alt={media.title || selectedEvent.title}
+                              className="h-full w-full object-cover"
+                            />
+                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 to-transparent px-2 pb-2 pt-5">
+                              <span className="line-clamp-1 text-left text-[9px] font-black uppercase tracking-wider text-white/90">
+                                {media.title || `Photo ${index + 1}`}
+                              </span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {selectedMedia.audio.length > 0 && (
+                      <div className="space-y-2">
+                        {selectedMedia.audio.map((media: any, index: number) => (
+                          <div
+                            key={media.id || `${media.url}-${index}`}
+                            className="rounded-2xl border border-foreground/10 bg-card/80 p-3 shadow-sm"
+                          >
+                            <div className="mb-2 flex items-center gap-3">
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-500/12 text-purple-400">
+                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M9 18V5l12-2v13M9 18c0 1.1-1.35 2-3 2s-3-.9-3-2 1.35-2 3-2 3 .9 3 2Zm12-2c0 1.1-1.35 2-3 2s-3-.9-3-2 1.35-2 3-2 3 .9 3 2Z" />
+                                </svg>
+                              </div>
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-black text-foreground">
+                                  {media.title || `Audio ${index + 1}`}
+                                </p>
+                                <p className="mt-0.5 text-[9px] font-black uppercase tracking-wider text-foreground/35">
+                                  Linked audio
+                                </p>
+                              </div>
+                            </div>
+                            <audio controls className="w-full">
+                              <source src={media.url} />
+                            </audio>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
           </div>
         ) : (
@@ -428,7 +509,7 @@ export default function FullMapView({ events }: FullMapViewProps) {
               onPointerCancel={(event) => finishMobileSheetGesture(event.clientY)}
             >
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400">Explorer Map</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400">Explorer Mode</p>
                 <h2 className="mt-1 text-lg font-black text-foreground">Spatial Layers</h2>
               </div>
               <button
@@ -490,6 +571,16 @@ export default function FullMapView({ events }: FullMapViewProps) {
           </div>
         )}
       </section>
+
+      {photoViewerIndex !== null && (
+        <MobileImageViewer
+          images={selectedMedia.images}
+          activeIndex={photoViewerIndex}
+          onIndexChange={setPhotoViewerIndex}
+          onClose={() => setPhotoViewerIndex(null)}
+          getAlt={(image, index) => image.title || selectedEvent?.title || `Photo ${index + 1}`}
+        />
+      )}
 
       <Map
         ref={mapRef}

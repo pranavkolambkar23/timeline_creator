@@ -4,7 +4,7 @@ import { useMemo, useRef, useEffect, useState } from 'react';
 import Map, { Source, Layer, NavigationControl, MapRef } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import MapSearchBar from './MapSearchBar';
-import BaseMapSwitcher, { MapStyleType, getMapStyle } from './BaseMapSwitcher';
+import BaseMapSwitcher, { MapStyleType, getInitialMapStyle, getMapStyle } from './BaseMapSwitcher';
 
 interface InteractiveMapProps {
   events: any[];
@@ -18,7 +18,7 @@ interface FeatureEntry {
 
 export default function InteractiveMap({ events, activeEventId }: InteractiveMapProps) {
   const mapRef = useRef<MapRef>(null);
-  const [mapStyleType, setMapStyleType] = useState<MapStyleType>('dark');
+  const [mapStyleType, setMapStyleType] = useState<MapStyleType>(getInitialMapStyle);
 
   const STADIA_KEY = process.env.NEXT_PUBLIC_STADIA_MAPS_KEY;
   const mapStyle = useMemo(() => getMapStyle(mapStyleType, STADIA_KEY), [mapStyleType, STADIA_KEY]);

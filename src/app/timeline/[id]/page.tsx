@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma";
 import Header from "@/components/Header";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { getCategoryColor } from "@/lib/colors";
 import { compareHistoricalDates, historicalDisplayDate } from "@/lib/historicalDate";
 
 export default async function TimelinePage({
@@ -39,6 +38,7 @@ export default async function TimelinePage({
                         datePrecision: e.datePrecision,
                         isApproximate: e.isApproximate,
                         locationData: e.locationData,
+                        mediaData: e.mediaData,
                     })),
                 };
             }
@@ -64,64 +64,14 @@ export default async function TimelinePage({
         );
     }
 
-    const categoryClass = getCategoryColor(timeline.category);
-
     return (
-        <div className="min-h-screen bg-background text-foreground selection:bg-indigo-500/30 overflow-x-hidden transition-colors duration-500">
+        <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground selection:bg-indigo-500/30 transition-colors duration-500">
             <div className="hidden md:block">
                 <Header />
             </div>
             
-            <main className="w-full">
-                {/* HERO SECTION - Entry Point */}
-                <div className="hidden max-w-[1400px] mx-auto px-6 pt-4 md:block md:pt-6 pb-24">
-                    <div className="flex flex-col items-center text-center">
-                        <div className="mb-8 flex flex-wrap justify-center gap-3">
-                            <span className={`px-5 py-2 text-[10px] font-black uppercase tracking-widest border rounded-full backdrop-blur-md bg-foreground/5 ${categoryClass.replace('bg-', 'text-').replace('text-', 'border-')}`}>
-                                {timeline.category}
-                            </span>
-                            {timeline.tags.map((tag: string) => (
-                                <span key={tag} className="px-4 py-2 text-[10px] font-black text-foreground/40 bg-foreground/5 border border-foreground/5 rounded-full uppercase tracking-widest">
-                                    #{tag}
-                                </span>
-                            ))}
-                        </div>
-                        
-                        <h1 className="text-6xl md:text-[7rem] font-black text-foreground mb-10 tracking-tighter leading-[0.85] max-w-5xl">
-                            {timeline.title}
-                        </h1>
-                        
-                        <p className="text-xl md:text-2xl text-foreground/50 leading-relaxed font-medium max-w-3xl mb-16">
-                            {timeline.description}
-                        </p>
-
-                        <div className="flex items-center gap-4 text-foreground/20">
-                            <div className="w-12 h-[1px] bg-foreground/10" />
-                            <span className="text-[10px] font-black uppercase tracking-[0.4em] animate-pulse">Scroll Down to Enter</span>
-                            <div className="w-12 h-[1px] bg-foreground/10" />
-                        </div>
-                    </div>
-                </div>
-
-                {/* THE FOCUS ENGINE */}
+            <main className="min-h-0 w-full flex-1">
                 <TimelineViewManager timeline={timeline} isAdmin={isAdmin} />
-
-                {/* FINAL FOOTER */}
-                <div className="hidden max-w-7xl mx-auto px-6 py-40 md:flex flex-col items-center">
-                    <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center mb-12 shadow-2xl shadow-indigo-500/20">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                    </div>
-                    <h3 className="text-3xl font-black text-foreground mb-4 tracking-tight">End of the Journey</h3>
-                    <p className="text-foreground/40 font-medium max-w-md text-center mb-12">
-                        You have reached the end of this timeline. Knowledge is power. Share this story with the world.
-                    </p>
-                    <a href="/" className="px-10 py-4 bg-foreground/5 border border-foreground/10 text-foreground rounded-[2rem] font-black uppercase tracking-widest text-xs hover:bg-foreground/10 transition-all active:scale-95">
-                        Explore More Timelines
-                    </a>
-                </div>
-
             </main>
         </div>
     );

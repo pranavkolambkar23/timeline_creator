@@ -4,15 +4,26 @@ import type { CSSProperties } from "react";
 import { useRef, useState } from "react";
 import InteractiveMap from "./InteractiveMap";
 import HistoricalDateBadges from "./HistoricalDateBadges";
+import MobileImageViewer from "./MobileImageViewer";
 
 interface VerticalTimelineWithMapProps {
   events: any[];
+  onRequestExplorer?: () => void;
 }
 
-export default function VerticalTimelineWithMap({ events }: VerticalTimelineWithMapProps) {
+export default function VerticalTimelineWithMap({ events, onRequestExplorer }: VerticalTimelineWithMapProps) {
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
   const [mobileTimelineHeight, setMobileTimelineHeight] = useState(50);
+  const [viewer, setViewer] = useState<{ eventId: string; index: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const getEventMedia = (event: any) => {
+    const media = Array.isArray(event.mediaData) ? event.mediaData : [];
+    return {
+      images: media.filter((item: any) => item?.type === 'image' && item.url),
+      audio: media.filter((item: any) => item?.type === 'audio' && item.url),
+    };
+  };
 
   const resizeMobilePanes = (clientY: number) => {
     const container = containerRef.current;
@@ -22,6 +33,9 @@ export default function VerticalTimelineWithMap({ events }: VerticalTimelineWith
     const nextHeight = ((clientY - top) / height) * 100;
     setMobileTimelineHeight(Math.min(Math.max(nextHeight, 25), 75));
   };
+
+  const viewerEvent = viewer ? events.find((event) => event.id === viewer.eventId) : null;
+  const viewerImages = viewerEvent ? getEventMedia(viewerEvent).images : [];
 
   return (
     <div
@@ -35,10 +49,11 @@ export default function VerticalTimelineWithMap({ events }: VerticalTimelineWith
       >
         <div className="px-8 md:px-12">
           {/* Vertical Track Line */}
-          <div className="absolute left-[3.25rem] md:left-[4.25rem] top-0 bottom-0 w-[2px] bg-gradient-to-b from-transparent via-foreground/10 to-transparent" />
+          <div className="absolute left-8 top-0 bottom-0 w-[2px] bg-gradient-to-b from-transparent via-foreground/10 to-transparent md:left-12" />
           
           {events.map((event) => {
             const isActive = activeEventId === event.id;
+            const media = getEventMedia(event);
             
             return (
               <div 
@@ -70,6 +85,57 @@ export default function VerticalTimelineWithMap({ events }: VerticalTimelineWith
                 <p className={`text-sm leading-relaxed transition-colors duration-300 ${isActive ? 'text-foreground/70' : 'text-foreground/40'}`}>
                   {event.description}
                 </p>
+
+                {(media.images.length > 0 || media.audio.length > 0) && (
+                  <div className="mt-5 space-y-3">
+                    {media.images.length > 0 && (
+                      <div className="no-scrollbar -mr-4 flex gap-2 overflow-x-auto pb-1 pr-4">
+                        {media.images.map((item: any, index: number) => (
+                          <button
+                            key={item.id || `${item.url}-${index}`}
+                            type="button"
+                            onClick={(clickEvent) => {
+                              clickEvent.stopPropagation();
+                              setViewer({ eventId: event.id, index });
+                            }}
+                            className="relative h-20 w-28 shrink-0 overflow-hidden rounded-xl border border-foreground/10 bg-foreground/5 text-left active:scale-[0.98]"
+                            aria-label={`Open ${item.title || event.title}`}
+                          >
+                            <img
+                              src={item.url}
+                              alt={item.title || event.title}
+                              className="h-full w-full object-cover"
+                            />
+                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 to-transparent px-2 pb-1.5 pt-5">
+                              <span className="line-clamp-1 text-[8px] font-black uppercase tracking-wider text-white/90">
+                                {item.title || `Photo ${index + 1}`}
+                              </span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {media.audio.length > 0 && (
+                      <div className="space-y-2">
+                        {media.audio.map((item: any, index: number) => (
+                          <div
+                            key={item.id || `${item.url}-${index}`}
+                            className="rounded-xl border border-foreground/10 bg-foreground/[0.04] p-3"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <p className="mb-2 truncate text-[9px] font-black uppercase tracking-widest text-foreground/45">
+                              {item.title || `Audio ${index + 1}`}
+                            </p>
+                            <audio controls className="w-full">
+                              <source src={item.url} />
+                            </audio>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
                 
                 {/* Location Badge */}
                 {event.locationData && (
@@ -88,8 +154,43 @@ export default function VerticalTimelineWithMap({ events }: VerticalTimelineWith
               </div>
             );
           })}
+
+          {onRequestExplorer && events.length > 0 && (
+            <div className="relative mb-6 pl-10">
+              <div className="absolute left-[-10px] top-5 z-10 flex h-5 w-5 items-center justify-center rounded-full border-[3px] border-purple-500 bg-background shadow-[0_0_20px_rgba(168,85,247,0.45)]">
+                <div className="h-1.5 w-1.5 rounded-full bg-purple-500" />
+              </div>
+              <button
+                type="button"
+                onClick={onRequestExplorer}
+                className="w-full rounded-2xl border border-purple-500/25 bg-purple-500/10 px-5 py-4 text-left shadow-xl shadow-black/10 transition active:scale-[0.985] hover:bg-purple-500/15"
+              >
+                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-purple-400">
+                  Hybrid complete
+                </p>
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <span className="text-base font-black leading-tight text-foreground">
+                    Continue in Explorer Mode
+                  </span>
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-purple-500/15 text-sm font-black text-purple-400">
+                    -&gt;
+                  </span>
+                </div>
+              </button>
+            </div>
+          )}
         </div>
       </div>
+
+      {viewer && viewerEvent && (
+        <MobileImageViewer
+          images={viewerImages}
+          activeIndex={viewer.index}
+          onIndexChange={(index) => setViewer({ eventId: viewerEvent.id, index })}
+          onClose={() => setViewer(null)}
+          getAlt={(image) => image.title || viewerEvent.title}
+        />
+      )}
 
       <div
         role="separator"

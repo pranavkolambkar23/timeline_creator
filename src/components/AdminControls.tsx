@@ -8,6 +8,13 @@ import FeedbackModal from "./FeedbackModal";
 import MobileAppActions from "./MobileAppActions";
 import { useToast } from "@/hooks/useToast";
 
+const MOBILE_VIEW_MODES: { id: "overview" | "story" | "hybrid" | "map"; label: string; shortLabel: string }[] = [
+    { id: "overview", label: "Timeline Overview", shortLabel: "OV" },
+    { id: "story", label: "Story Mode", shortLabel: "ST" },
+    { id: "hybrid", label: "Hybrid Mode", shortLabel: "HY" },
+    { id: "map", label: "Explorer Mode", shortLabel: "EX" },
+];
+
 export default function AdminControls({ 
     timelineId, 
     initialIsFeatured,
@@ -32,9 +39,18 @@ export default function AdminControls({
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [isDarkMode, setIsDarkMode] = useState(true);
     const touchStartX = useRef<number | null>(null);
     const router = useRouter();
     const { showToast } = useToast();
+
+    useEffect(() => {
+        const savedTheme = localStorage.getItem("theme");
+        const shouldUseLight = savedTheme === "light";
+        setIsDarkMode(!shouldUseLight);
+        document.documentElement.classList.toggle("light", shouldUseLight);
+        document.documentElement.classList.toggle("dark", !shouldUseLight);
+    }, []);
 
     useEffect(() => {
         const handleFullscreenChange = () => {
@@ -53,6 +69,14 @@ export default function AdminControls({
         } else {
             await document.documentElement.requestFullscreen();
         }
+    };
+
+    const toggleTheme = () => {
+        const nextIsDark = !isDarkMode;
+        document.documentElement.classList.toggle("dark", nextIsDark);
+        document.documentElement.classList.toggle("light", !nextIsDark);
+        localStorage.setItem("theme", nextIsDark ? "dark" : "light");
+        setIsDarkMode(nextIsDark);
     };
 
     const toggleFeatured = async () => {
@@ -184,17 +208,12 @@ export default function AdminControls({
                         <div className="mb-3">
                             <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-foreground/40">View Mode</p>
                             <div className="grid grid-cols-1 gap-2">
-                                {[
-                                    { id: "overview", label: "Timeline Overview" },
-                                    { id: "story", label: "Story Mode" },
-                                    { id: "hybrid", label: "Hybrid Mode" },
-                                    { id: "map", label: "Explorer Map" },
-                                ].map((mode) => (
+                                {MOBILE_VIEW_MODES.map((mode) => (
                                     <button
                                         key={mode.id}
                                         type="button"
                                         onClick={() => {
-                                            onMobileViewModeChange(mode.id as "overview" | "story" | "hybrid" | "map");
+                                            onMobileViewModeChange(mode.id);
                                             setIsDrawerOpen(false);
                                         }}
                                         className={`rounded-2xl border px-4 py-3 text-left text-[10px] font-black uppercase tracking-widest transition-colors ${
@@ -280,6 +299,8 @@ export default function AdminControls({
                             }}
                             onFullscreen={toggleFullscreen}
                             isFullscreen={isFullscreen}
+                            onThemeToggle={toggleTheme}
+                            isDarkMode={isDarkMode}
                             onNavigate={() => setIsDrawerOpen(false)}
                         />
                     </div>

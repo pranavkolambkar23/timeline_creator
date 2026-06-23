@@ -106,6 +106,267 @@ html.light {
   @apply backdrop-blur-xl bg-white/5 border border-white/10;
 }
 
+.mobile-story-shell {
+  background: #07111d;
+  color: #ffffff;
+}
+
+.mobile-story-backdrop {
+  background:
+    radial-gradient(circle at top left, rgb(56 189 248 / 0.16), transparent 34%),
+    linear-gradient(180deg, rgb(15 23 42 / 0.98), rgb(3 7 18));
+}
+
+.mobile-story-kicker {
+  color: rgb(125 211 252 / 0.72);
+}
+
+.mobile-story-subtitle {
+  color: rgb(226 232 240 / 0.42);
+}
+
+.mobile-story-line {
+  background: rgb(125 211 252 / 0.45);
+  box-shadow: 0 0 18px rgb(125 211 252 / 0.45);
+}
+
+.mobile-story-date {
+  color: rgb(255 255 255 / 0.72);
+}
+
+.mobile-story-dot {
+  border-color: #07111d;
+}
+
+.mobile-story-progress {
+  accent-color: #4f46e5;
+}
+
+html.light .mobile-story-shell {
+  background: #f8fbff;
+  color: #0f172a;
+}
+
+html.light .mobile-story-backdrop {
+  background:
+    radial-gradient(circle at 20% 0%, rgb(56 189 248 / 0.22), transparent 34%),
+    radial-gradient(circle at 90% 24%, rgb(191 219 254 / 0.5), transparent 30%),
+    linear-gradient(180deg, #ffffff 0%, #f0f9ff 54%, #eaf4ff 100%);
+}
+
+html.light .mobile-story-kicker {
+  color: rgb(15 23 42 / 0.88);
+}
+
+html.light .mobile-story-subtitle {
+  color: rgb(2 132 199 / 0.65);
+}
+
+html.light .mobile-story-line {
+  background: rgb(14 165 233 / 0.45);
+  box-shadow: 0 0 18px rgb(14 165 233 / 0.3);
+}
+
+html.light .mobile-story-date {
+  color: rgb(15 23 42 / 0.62);
+}
+
+html.light .mobile-story-dot {
+  border-color: #f8fbff;
+}
+
+html.light .mobile-story-card {
+  box-shadow: 0 18px 38px -24px rgb(15 23 42 / 0.55);
+}
+
+html.light .mobile-story-media-panel,
+html.light .mobile-story-number-panel {
+  border-left-color: rgb(255 255 255 / 0.1);
+  background: rgb(0 0 0 / 0.2);
+}
+
+html.light .mobile-story-media-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgb(0 0 0 / 0.35), transparent 38%);
+  pointer-events: none;
+}
+
+html.light .mobile-story-progress {
+  accent-color: #2563eb;
+}
+
+html.light .mobile-story-next-mode {
+  border-color: rgb(99 102 241 / 0.22);
+  background: linear-gradient(135deg, rgb(238 242 255 / 0.96), rgb(219 234 254 / 0.88));
+  box-shadow: 0 16px 36px -24px rgb(30 64 175 / 0.34);
+}
+
+html.light .mobile-story-next-mode p {
+  color: rgb(79 70 229 / 0.72);
+}
+
+html.light .mobile-story-next-mode span {
+  color: #1e293b;
+}
+
+html.light .mobile-story-next-mode span:last-child {
+  background: rgb(79 70 229 / 0.12);
+  color: #3730a3;
+}
+
+.cover-placeholder {
+  border-color: rgb(255 255 255 / 0.15);
+  background: linear-gradient(135deg, #020617 0%, #1e1b4b 48%, #581c87 100%);
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.4);
+}
+
+.cover-placeholder-glow {
+  background:
+    radial-gradient(circle at 22% 18%, rgb(129 140 248 / 0.18), transparent 28%),
+    radial-gradient(circle at 82% 78%, rgb(216 180 254 / 0.2), transparent 30%);
+}
+
+.cover-placeholder-grid {
+  opacity: 0.25;
+  background-image:
+    linear-gradient(rgb(255 255 255 / 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.12) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+.cover-placeholder-arc-a {
+  border-color: rgb(199 210 254 / 0.12);
+}
+
+.cover-placeholder-arc-b {
+  border-color: rgb(216 180 254 / 0.12);
+}
+
+.cover-placeholder-small-a {
+  border-color: rgb(199 210 254 / 0.2);
+  background: rgb(255 255 255 / 0.1);
+}
+
+.cover-placeholder-small-b {
+  border-color: rgb(216 180 254 / 0.2);
+  background: rgb(255 255 255 / 0.1);
+}
+
+.cover-placeholder-line {
+  background: rgb(255 255 255 / 0.2);
+  box-shadow: 0 0 28px rgb(129 140 248 / 0.42);
+}
+
+.cover-placeholder-dot-a {
+  border-color: #020617;
+  background: #818cf8;
+}
+
+.cover-placeholder-dot-b {
+  border-color: #1e1b4b;
+  background: #a78bfa;
+}
+
+.cover-placeholder-dot-c {
+  border-color: #581c87;
+  background: #d8b4fe;
+}
+
+.cover-placeholder-center {
+  border-color: rgb(255 255 255 / 0.15);
+  background: rgb(255 255 255 / 0.1);
+  box-shadow: 0 25px 50px -12px rgb(99 102 241 / 0.1);
+}
+
+.cover-placeholder-ring-a {
+  border-color: rgb(255 255 255 / 0.15);
+}
+
+.cover-placeholder-ring-b {
+  border-color: rgb(199 210 254 / 0.55);
+}
+
+.cover-placeholder-core {
+  background: rgb(255 255 255 / 0.55);
+}
+
+html.light .cover-placeholder {
+  border-color: #dbeafe;
+  background: linear-gradient(135deg, #ffffff 0%, #eff6ff 48%, #dbeafe 100%);
+  box-shadow: 0 25px 50px -12px rgb(147 197 253 / 0.35);
+}
+
+html.light .cover-placeholder-glow {
+  background:
+    radial-gradient(circle at 24% 20%, rgb(14 165 233 / 0.14), transparent 30%),
+    radial-gradient(circle at 82% 78%, rgb(37 99 235 / 0.13), transparent 32%);
+}
+
+html.light .cover-placeholder-grid {
+  opacity: 0.26;
+  background-image:
+    linear-gradient(rgb(30 64 175 / 0.09) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(30 64 175 / 0.09) 1px, transparent 1px);
+}
+
+html.light .cover-placeholder-arc-a {
+  border-color: rgb(186 230 253 / 0.62);
+}
+
+html.light .cover-placeholder-arc-b {
+  border-color: rgb(147 197 253 / 0.58);
+}
+
+html.light .cover-placeholder-small-a {
+  border-color: rgb(125 211 252 / 0.45);
+  background: rgb(255 255 255 / 0.72);
+}
+
+html.light .cover-placeholder-small-b {
+  border-color: rgb(96 165 250 / 0.42);
+  background: rgb(255 255 255 / 0.65);
+}
+
+html.light .cover-placeholder-line {
+  background: rgb(30 64 175 / 0.16);
+  box-shadow: 0 0 28px rgb(59 130 246 / 0.24);
+}
+
+html.light .cover-placeholder-dot-a {
+  border-color: #f8fafc;
+  background: #0ea5e9;
+}
+
+html.light .cover-placeholder-dot-b {
+  border-color: #f8fafc;
+  background: #2563eb;
+}
+
+html.light .cover-placeholder-dot-c {
+  border-color: #f8fafc;
+  background: #1d4ed8;
+}
+
+html.light .cover-placeholder-center {
+  border-color: rgb(255 255 255 / 0.9);
+  background: rgb(255 255 255 / 0.58);
+  box-shadow: 0 25px 50px -12px rgb(20 184 166 / 0.18);
+}
+
+html.light .cover-placeholder-ring-a {
+  border-color: rgb(15 118 110 / 0.09);
+}
+
+html.light .cover-placeholder-ring-b {
+  border-color: rgb(37 99 235 / 0.44);
+}
+
+html.light .cover-placeholder-core {
+  background: rgb(15 23 42 / 0.22);
+}
+
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
   25% { transform: translateX(-5px); }

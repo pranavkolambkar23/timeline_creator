@@ -52,7 +52,7 @@ export default function ViewerTour() {
                 {
                     element: '#tour-map-mode',
                     popover: {
-                        title: '3. Explorer Map',
+                        title: '3. Explorer Mode',
                         description: 'A full-screen interactive Map. View all coordinates, routes, and polygons simultaneously. Click on any spatial feature to explore its details.',
                         side: "top",
                         align: 'end'

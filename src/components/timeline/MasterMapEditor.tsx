@@ -4,7 +4,7 @@ import { useRef, useState, useCallback, memo, useMemo, useEffect } from 'react';
 import Map, { NavigationControl, MapRef, Source, Layer } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import MapSearchBar from './MapSearchBar';
-import BaseMapSwitcher, { MapStyleType, getMapStyle } from './BaseMapSwitcher';
+import BaseMapSwitcher, { MapStyleType, getInitialMapStyle, getMapStyle } from './BaseMapSwitcher';
 
 type DrawMode = 'select' | 'point' | 'linestring' | 'polygon' | 'delete';
 
@@ -41,7 +41,7 @@ function toGeoJson(list: StoredFeature[]) {
 function MasterMapEditor({ initialData, onChange, onDeleteFeature, selectedFeatureId }: MasterMapEditorProps) {
   const mapRef = useRef<MapRef>(null);
   const [activeTool, setActiveTool] = useState<DrawMode>('select');
-  const [mapStyleType, setMapStyleType] = useState<MapStyleType>('dark');
+  const [mapStyleType, setMapStyleType] = useState<MapStyleType>(getInitialMapStyle);
 
   const [features, setFeatures] = useState<StoredFeature[]>(() => {
     if (!initialData?.features) return [];

@@ -4,7 +4,7 @@ import { useRef, useState, useCallback, useMemo } from 'react';
 import Map, { NavigationControl, Source, Layer } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import MapSearchBar from './MapSearchBar';
-import BaseMapSwitcher, { MapStyleType, getMapStyle } from './BaseMapSwitcher';
+import BaseMapSwitcher, { MapStyleType, getInitialMapStyle, getMapStyle } from './BaseMapSwitcher';
 
 type DrawMode = 'select' | 'point' | 'linestring' | 'polygon';
 
@@ -37,7 +37,7 @@ export default function MapDrawingBoard({ initialData, onChange }: MapDrawingBoa
   });
   const [wip, setWip] = useState<[number, number][]>([]);
 
-  const [mapStyleType, setMapStyleType] = useState<MapStyleType>('dark');
+  const [mapStyleType, setMapStyleType] = useState<MapStyleType>(getInitialMapStyle);
   const STADIA_KEY = process.env.NEXT_PUBLIC_STADIA_MAPS_KEY;
   const mapStyle = useMemo(() => getMapStyle(mapStyleType, STADIA_KEY), [mapStyleType, STADIA_KEY]);
 

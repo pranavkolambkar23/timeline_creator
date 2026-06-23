@@ -6,10 +6,11 @@ import { EventType } from "@/hooks/useTimelineStudio";
 import { compactHistoricalDisplayDate, historicalDisplayDate, isValidHistoricalDate, parseHistoricalDate, parseImportedHistoricalDate } from "@/lib/historicalDate";
 import HistoricalDateEditor from "./HistoricalDateEditor";
 import { useConfirm } from "@/hooks/useConfirm";
+import MediaUploader from "./MediaUploader";
 
 const CATEGORIES = ["General", "History", "Technology", "Science", "Art", "Sports"];
 
-type StudioTab = "overview" | "events" | "features" | "ai" | "import";
+type StudioTab = "overview" | "events" | "features" | "media" | "ai" | "import";
 type DrawerSnap = "low" | "middle" | "full";
 
 const SNAP_HEIGHTS: Record<DrawerSnap, number> = {
@@ -22,6 +23,7 @@ const TABS: { id: StudioTab; label: string; ready: boolean }[] = [
     { id: "overview", label: "Overview", ready: true },
     { id: "events", label: "Events", ready: true },
     { id: "features", label: "Geospatial Features", ready: true },
+    { id: "media", label: "Images & Audio", ready: true },
     { id: "ai", label: "AI Assistant", ready: true },
     { id: "import", label: "Import Data", ready: true },
 ];
@@ -64,6 +66,9 @@ interface MobileTimelineStudioDrawerProps {
     description: string;
     category: string;
     tagsInput: string;
+    coverImage: string | null;
+    coverImagePosition?: { x: number; y: number };
+    coverImageZoom?: number;
     events: EventType[];
     features: GeospatialFeature[];
     activeEventIndex: number | null;
@@ -73,8 +78,11 @@ interface MobileTimelineStudioDrawerProps {
     onDescriptionChange: (value: string) => void;
     onCategoryChange: (value: string) => void;
     onTagsInputChange: (value: string) => void;
+    onCoverImageChange: (url: string | null) => void;
+    onCoverImagePositionChange?: (position: { x: number; y: number }) => void;
+    onCoverImageZoomChange?: (zoom: number) => void;
     onActiveEventIndexChange: (index: number | null) => void;
-    onEventChange: (index: number, field: keyof EventType, value: string) => void;
+    onEventChange: (index: number, field: keyof EventType, value: any) => void;
     onToggleFeatureLink: (eventIndex: number, featureId: string) => void;
     onFeatureNameChange: (featureId: string, value: string) => void;
     onAiImport: (events: ParsedEvent[], metadata?: AiMetadata) => void;
@@ -817,6 +825,9 @@ export default function MobileTimelineStudioDrawer({
     description,
     category,
     tagsInput,
+    coverImage,
+    coverImagePosition = { x: 50, y: 50 },
+    coverImageZoom = 1,
     events,
     features,
     activeEventIndex,
@@ -826,6 +837,9 @@ export default function MobileTimelineStudioDrawer({
     onDescriptionChange,
     onCategoryChange,
     onTagsInputChange,
+    onCoverImageChange,
+    onCoverImagePositionChange,
+    onCoverImageZoomChange,
     onActiveEventIndexChange,
     onEventChange,
     onToggleFeatureLink,
@@ -982,6 +996,19 @@ export default function MobileTimelineStudioDrawer({
                                     <TagChipInput value={tagsInput} onChange={onTagsInputChange} />
                                     <span className="mt-1.5 block text-[10px] text-white/25">Press comma or enter to create a tag.</span>
                                 </div>
+                                <div>
+                                    <span className="mb-1.5 block text-[9px] font-mono uppercase tracking-[0.2em] text-white/35">Timeline Cover Image</span>
+                                    <MediaUploader 
+                                        media={coverImage ? [{ id: 'cover', url: coverImage, type: 'image', size: 0, title: 'Cover Image' }] : []} 
+                                        onChange={(media) => onCoverImageChange(media.length > 0 ? media[0].url : null)}
+                                        maxLimit={1}
+                                        imagePosition={coverImagePosition}
+                                        onImagePositionChange={onCoverImagePositionChange}
+                                        imageZoom={coverImageZoom}
+                                        onImageZoomChange={onCoverImageZoomChange}
+                                    />
+                                    <span className="mt-1.5 block text-[10px] text-white/25">Shown on the overview page and timeline cards.</span>
+                                </div>
                             </div>
                         )}
 
@@ -1049,6 +1076,13 @@ export default function MobileTimelineStudioDrawer({
                                                                 <span className="mb-1 block text-[9px] font-mono uppercase tracking-wider text-white/35">Description</span>
                                                                 <textarea value={event.description} onChange={(e) => onEventChange(index, "description", e.target.value)} placeholder="Describe what happened" rows={5} className="w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm leading-relaxed text-white outline-none placeholder:text-white/20 focus:border-indigo-400/50" />
                                                             </label>
+                                                            <div>
+                                                                <span className="mb-1 block text-[9px] font-mono uppercase tracking-wider text-white/35">Images & Audio</span>
+                                                                <MediaUploader 
+                                                                    media={event.mediaData || []} 
+                                                                    onChange={(media) => onEventChange(index, "mediaData", media)}
+                                                                />
+                                                            </div>
                                                             <EventFeatureLinker
                                                                 event={event}
                                                                 eventIndex={index}

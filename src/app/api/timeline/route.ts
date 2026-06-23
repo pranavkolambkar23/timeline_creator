@@ -19,7 +19,7 @@ export async function POST(req: Request) {
 
         // 📝 2. Parse body
         const body = await req.json();
-        const { title, description, events, category, tags } = body;
+        const { title, description, events, category, tags, coverImage } = body;
 
         // ⚠️ 3. Validate timeline
         if (!title || !description) {
@@ -54,6 +54,7 @@ export async function POST(req: Request) {
                 description,
                 category: category || "General",
                 tags: tags || [],
+                coverImage: coverImage || null,
                 userId: session.user.id,
 
                 timelineEvents: {
@@ -62,13 +63,14 @@ export async function POST(req: Request) {
                         description: event.description,
                         ...historicalEventData(event.date)!,
                         locationData: event.locationData || null,
+                        mediaData: event.mediaData || [],
                     })),
                 },
             },
             include: {
                 timelineEvents: {
                     orderBy: {
-                        date: "asc", // 🔥 always sorted
+                        date: "asc",
                     },
                 },
             },
@@ -112,7 +114,6 @@ export async function GET(req: Request) {
             if (!isAdmin) {
                 return NextResponse.json({ error: "Forbidden" }, { status: 403 });
             }
-            // No filter for adminAll, fetch everything
             whereClause = {};
         } else {
             if (!session || !session.user?.id) {
