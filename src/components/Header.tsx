@@ -80,7 +80,7 @@ export default function Header() {
 
     return (
         <>
-        <header className={`fixed top-0 left-0 right-0 z-50 w-full bg-background/80 backdrop-blur-md border-b border-foreground/5 px-3 py-3 transition-all duration-300 md:sticky md:translate-y-0 md:px-6 md:py-4 ${isMobileHeaderVisible ? "translate-y-0" : "-translate-y-full"}`}>
+        <header className={`app-top-nav fixed top-0 left-0 right-0 z-50 w-full px-3 py-3 backdrop-blur-md transition-all duration-300 md:sticky md:translate-y-0 md:px-6 md:py-4 ${isMobileHeaderVisible ? "translate-y-0" : "-translate-y-full"}`}>
             <div className="max-w-7xl mx-auto flex items-center gap-2 sm:gap-5">
                 {/* Left: Logo */}
                 <Link href="/" className="flex shrink-0 sm:shrink items-center gap-3 group">

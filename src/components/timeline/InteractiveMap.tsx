@@ -9,6 +9,7 @@ import BaseMapSwitcher, { MapStyleType, getInitialMapStyle, getMapStyle } from '
 interface InteractiveMapProps {
   events: any[];
   activeEventId?: string | null;
+  flush?: boolean;
 }
 
 interface FeatureEntry {
@@ -16,7 +17,7 @@ interface FeatureEntry {
   eventIds: Set<string>;
 }
 
-export default function InteractiveMap({ events, activeEventId }: InteractiveMapProps) {
+export default function InteractiveMap({ events, activeEventId, flush = false }: InteractiveMapProps) {
   const mapRef = useRef<MapRef>(null);
   const [mapStyleType, setMapStyleType] = useState<MapStyleType>(getInitialMapStyle);
 
@@ -105,8 +106,12 @@ export default function InteractiveMap({ events, activeEventId }: InteractiveMap
     : ['literal', false];
 
   return (
-    <div className="w-full h-full min-h-0 md:min-h-[500px] rounded-none lg:rounded-xl overflow-hidden border-0 lg:border border-purple-500/20 relative shadow-[0_0_40px_-15px_rgba(139,92,246,0.3)] group [&_.maplibregl-ctrl-bottom-right]:hidden md:[&_.maplibregl-ctrl-bottom-right]:block">
-      <div className="absolute inset-0 pointer-events-none border border-white/5 rounded-xl z-10" />
+    <div className={`w-full h-full min-h-0 md:min-h-[500px] overflow-hidden relative group [&_.maplibregl-ctrl-bottom-right]:hidden md:[&_.maplibregl-ctrl-bottom-right]:block ${
+      flush
+        ? "rounded-none border-0 shadow-none"
+        : "rounded-none border-0 shadow-[0_0_40px_-15px_rgba(139,92,246,0.3)] lg:rounded-xl lg:border border-purple-500/20"
+    }`}>
+      {!flush && <div className="absolute inset-0 pointer-events-none border border-white/5 rounded-xl z-10" />}
 
       <Map
         ref={mapRef}

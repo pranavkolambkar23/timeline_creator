@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import TimelineOpeningOverlay from "./TimelineOpeningOverlay";
 
 type SearchResult = {
     id: string;
@@ -35,12 +36,14 @@ function SearchResults({
     results,
     isLoading,
     onNavigate,
+    onOpenTimeline,
     variant = "panel",
 }: {
     query: string;
     results: SearchResult[];
     isLoading: boolean;
     onNavigate: () => void;
+    onOpenTimeline: () => void;
     variant?: "panel" | "mobile";
 }) {
     const isMobile = variant === "mobile";
@@ -72,7 +75,10 @@ function SearchResults({
                 <Link
                     key={result.id}
                     href={`/timeline/${result.id}`}
-                    onClick={onNavigate}
+                    onClick={() => {
+                        onOpenTimeline();
+                        onNavigate();
+                    }}
                     className="block rounded-2xl p-4 transition-colors hover:bg-foreground/5"
                 >
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -126,6 +132,7 @@ export default function TimelineSearch() {
     const [query, setQuery] = useState("");
     const [results, setResults] = useState<SearchResult[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [isOpeningTimeline, setIsOpeningTimeline] = useState(false);
     const [isDesktopOpen, setIsDesktopOpen] = useState(false);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
@@ -249,7 +256,13 @@ export default function TimelineSearch() {
                                     Esc
                                 </button>
                             </label>
-                            <SearchResults query={query} results={results} isLoading={isLoading} onNavigate={() => setIsDesktopOpen(false)} />
+                            <SearchResults
+                                query={query}
+                                results={results}
+                                isLoading={isLoading}
+                                onNavigate={() => setIsDesktopOpen(false)}
+                                onOpenTimeline={() => setIsOpeningTimeline(true)}
+                            />
                         </div>
                     </div>,
                     document.body,
@@ -292,10 +305,18 @@ export default function TimelineSearch() {
                         </label>
                     </div>
 
-                    <SearchResults query={query} results={results} isLoading={isLoading} onNavigate={closeMobileSearch} variant="mobile" />
+                    <SearchResults
+                        query={query}
+                        results={results}
+                        isLoading={isLoading}
+                        onNavigate={closeMobileSearch}
+                        onOpenTimeline={() => setIsOpeningTimeline(true)}
+                        variant="mobile"
+                    />
                 </div>,
                 document.body,
             )}
+            {isOpeningTimeline && <TimelineOpeningOverlay />}
         </>
     );
 }

@@ -23,6 +23,7 @@ export default function AdminControls({
     mobileViewMode,
     onMobileViewModeChange,
     onExitPreview,
+    variant = "all",
 }: { 
     timelineId: string; 
     initialIsFeatured: boolean;
@@ -31,6 +32,7 @@ export default function AdminControls({
     mobileViewMode: "overview" | "story" | "hybrid" | "map";
     onMobileViewModeChange: (viewMode: "overview" | "story" | "hybrid" | "map") => void;
     onExitPreview?: () => void;
+    variant?: "all" | "desktopRail" | "mobileOnly";
 }) {
     const { data: session } = useSession();
     const isOwner = session?.user?.id === creatorId || isAdmin;
@@ -102,10 +104,14 @@ export default function AdminControls({
         }
     };
 
+    const showDesktopFloating = variant === "all";
+    const showDesktopRail = variant === "desktopRail";
+    const showMobileControls = variant === "all" || variant === "mobileOnly";
+
     return (
         <>
             {/* Desktop floating controls */}
-            {(isOwner || isAdmin) && (
+            {showDesktopFloating && (isOwner || isAdmin) && (
             <div className="fixed bottom-8 right-8 z-[100] hidden md:flex flex-col items-end gap-3 group">
                 {/* Tooltip */}
                 <div className="px-4 py-2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap border border-white/10 shadow-2xl">
@@ -152,6 +158,60 @@ export default function AdminControls({
             </div>
             )}
 
+            {showDesktopRail && (isOwner || isAdmin) && (
+                <div className="mt-1 hidden flex-col items-center gap-1 border-t border-foreground/15 pt-2 md:flex" aria-label="Timeline admin actions">
+                    {isOwner && (
+                        <Link
+                            href={`/timeline/${timelineId}/edit`}
+                            className="group/mode-button relative flex h-8 w-8 items-center justify-center rounded-lg border border-transparent bg-transparent text-foreground/55 transition-colors duration-200 hover:border-indigo-400/30 hover:bg-indigo-500/10 hover:text-foreground active:scale-[0.97] dark:text-foreground/60 dark:hover:bg-indigo-500/15"
+                            title="Modify narrative"
+                            aria-label="Modify narrative"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-[15px] w-[15px]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.3} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            <span className="timeline-mode-tooltip pointer-events-none absolute left-full ml-3 min-w-36 origin-left scale-95 rounded-xl px-3 py-2 text-left opacity-0 transition-all duration-200 group-hover/mode-button:scale-100 group-hover/mode-button:opacity-100 group-focus-visible/mode-button:scale-100 group-focus-visible/mode-button:opacity-100">
+                                <span className="timeline-mode-tooltip-title block whitespace-nowrap text-[10px] font-black uppercase tracking-widest">
+                                    Modify Narrative
+                                </span>
+                                <span className="timeline-mode-tooltip-hint mt-0.5 block whitespace-nowrap text-[8px] font-mono uppercase tracking-wider">
+                                    Edit this timeline
+                                </span>
+                            </span>
+                        </Link>
+                    )}
+
+                    {isAdmin && (
+                        <button
+                            type="button"
+                            onClick={toggleFeatured}
+                            disabled={isLoading}
+                            className={`group/mode-button relative flex h-8 w-8 items-center justify-center rounded-lg border transition-colors duration-200 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 ${
+                                isFeatured
+                                    ? "border-rose-500/45 bg-rose-500/12 text-rose-500 dark:border-rose-300/25 dark:bg-rose-500/18 dark:text-rose-300"
+                                    : "border-transparent bg-transparent text-foreground/55 hover:border-rose-400/30 hover:bg-rose-500/10 hover:text-rose-500 dark:text-foreground/60 dark:hover:bg-rose-500/15 dark:hover:text-rose-300"
+                            }`}
+                            title={isFeatured ? "Remove highlight" : "Highlight archive"}
+                            aria-label={isFeatured ? "Remove highlight" : "Highlight archive"}
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-[15px] w-[15px]" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                            </svg>
+                            <span className="timeline-mode-tooltip pointer-events-none absolute left-full ml-3 min-w-36 origin-left scale-95 rounded-xl px-3 py-2 text-left opacity-0 transition-all duration-200 group-hover/mode-button:scale-100 group-hover/mode-button:opacity-100 group-focus-visible/mode-button:scale-100 group-focus-visible/mode-button:opacity-100">
+                                <span className="timeline-mode-tooltip-title block whitespace-nowrap text-[10px] font-black uppercase tracking-widest">
+                                    {isLoading ? "Syncing..." : isFeatured ? "Remove Highlight" : "Highlight Archive"}
+                                </span>
+                                <span className="timeline-mode-tooltip-hint mt-0.5 block whitespace-nowrap text-[8px] font-mono uppercase tracking-wider">
+                                    Archive management
+                                </span>
+                            </span>
+                        </button>
+                    )}
+                </div>
+            )}
+
+            {showMobileControls && (
+            <>
             {/* Mobile right-side action drawer */}
             <button
                 type="button"
@@ -311,6 +371,8 @@ export default function AdminControls({
                 </aside>
             </div>
             <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
+            </>
+            )}
         </>
     );
 }

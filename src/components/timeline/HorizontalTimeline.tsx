@@ -1,347 +1,526 @@
 "use client";
 
-import React, { useRef, useEffect, useState } from "react";
-import Link from "next/link";
-import Logo from "@/components/Logo";
+import { WheelEvent, useEffect, useMemo, useRef, useState } from "react";
 import HistoricalDateBadges from "./HistoricalDateBadges";
 
-type Event = {
-    id: string;
-    title: string;
-    description: string;
-    date: string | Date;
-    displayDate: string;
-    datePrecision?: string | null;
-    isApproximate?: boolean | null;
-    mediaData?: any[];
+type MediaItem = {
+  id?: string;
+  url: string;
+  type: "image" | "audio";
+  size?: number;
+  title?: string;
 };
 
-export default function HorizontalTimeline({ 
-    events, 
-    timelineTitle 
-}: { 
-    events: Event[], 
-    timelineTitle: string 
+type Event = {
+  id: string;
+  title: string;
+  description: string;
+  date: string | Date;
+  displayDate: string;
+  datePrecision?: string | null;
+  isApproximate?: boolean | null;
+  mediaData?: MediaItem[];
+};
+
+const ACCENTS = [
+  {
+    text: "text-sky-300",
+    activeText: "text-sky-500 dark:text-sky-300",
+    dot: "bg-sky-400",
+    ring: "ring-sky-400/30",
+    line: "from-sky-400 via-cyan-400 to-emerald-400",
+    card: "from-sky-950 via-sky-900 to-cyan-950",
+    border: "border-sky-300/50",
+    shadow: "shadow-sky-500/20",
+  },
+  {
+    text: "text-emerald-300",
+    activeText: "text-emerald-500 dark:text-emerald-300",
+    dot: "bg-emerald-400",
+    ring: "ring-emerald-400/30",
+    line: "from-emerald-400 via-teal-400 to-rose-400",
+    card: "from-emerald-950 via-emerald-900 to-teal-950",
+    border: "border-emerald-300/50",
+    shadow: "shadow-emerald-500/20",
+  },
+  {
+    text: "text-rose-300",
+    activeText: "text-rose-500 dark:text-rose-300",
+    dot: "bg-rose-400",
+    ring: "ring-rose-400/30",
+    line: "from-rose-400 via-fuchsia-400 to-indigo-400",
+    card: "from-rose-950 via-rose-900 to-fuchsia-950",
+    border: "border-rose-300/50",
+    shadow: "shadow-rose-500/20",
+  },
+  {
+    text: "text-indigo-300",
+    activeText: "text-indigo-500 dark:text-indigo-300",
+    dot: "bg-indigo-400",
+    ring: "ring-indigo-400/30",
+    line: "from-indigo-400 via-violet-400 to-amber-400",
+    card: "from-indigo-950 via-indigo-900 to-violet-950",
+    border: "border-indigo-300/50",
+    shadow: "shadow-indigo-500/20",
+  },
+  {
+    text: "text-amber-300",
+    activeText: "text-amber-500 dark:text-amber-300",
+    dot: "bg-amber-400",
+    ring: "ring-amber-400/30",
+    line: "from-amber-400 via-orange-400 to-sky-400",
+    card: "from-amber-950 via-orange-900 to-rose-950",
+    border: "border-amber-300/50",
+    shadow: "shadow-amber-500/20",
+  },
+];
+
+function getMedia(event: Event) {
+  return Array.isArray(event.mediaData) ? event.mediaData : [];
+}
+
+function getCoverImage(event: Event) {
+  return getMedia(event).find((media) => media.type === "image" && media.url);
+}
+
+function clampIndex(index: number, length: number) {
+  return Math.max(0, Math.min(length - 1, index));
+}
+
+export default function HorizontalTimeline({
+  events,
+  timelineTitle,
+}: {
+  events: Event[];
+  timelineTitle: string;
 }) {
-    const scrollContainerRef = useRef<HTMLDivElement>(null);
-    const nodeRefs = useRef<(HTMLDivElement | null)[]>([]);
-    const [activationPoint, setActivationPoint] = useState(0);
-    const [progress, setProgress] = useState(0);
-    const [isScrolled, setIsScrolled] = useState(false);
-    const [windowScrollY, setWindowScrollY] = useState(0);
-    const [activeIndex, setActiveIndex] = useState(0);
-    const [expandedEventIndex, setExpandedEventIndex] = useState<number | null>(null);
+  const cardScrollerRef = useRef<HTMLDivElement>(null);
+  const cardRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const scrollFrameRef = useRef<number | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [readIndex, setReadIndex] = useState<number | null>(null);
 
-    const handleScroll = () => {
-        if (!scrollContainerRef.current || events.length === 0) return;
-        
-        const container = scrollContainerRef.current;
-        const { scrollLeft, clientWidth } = container;
-        
-        // The "Scanner" point - 25% into the screen
-        const currentScannerX = scrollLeft + (clientWidth * 0.25);
-        setActivationPoint(currentScannerX);
-        
-        // Calculate progress based on the center of the first and last nodes
-        const firstNode = nodeRefs.current[0];
-        const lastNode = nodeRefs.current[events.length - 1];
-        
-        if (firstNode && lastNode) {
-            // Get center points
-            const firstCenter = firstNode.offsetLeft + (firstNode.offsetWidth / 2);
-            const lastCenter = lastNode.offsetLeft + (lastNode.offsetWidth / 2);
-            
-            const totalDistance = lastCenter - firstCenter;
-            const currentDistance = currentScannerX - firstCenter;
-            
-            const scrollPercent = Math.min(Math.max((currentDistance / (totalDistance || 1)) * 100, 0), 100);
-            setProgress(scrollPercent);
-        }
+  const readEvent = readIndex !== null ? events[readIndex] : null;
+  const readMedia = useMemo(() => (readEvent ? getMedia(readEvent) : []), [readEvent]);
 
-        // Track closest active index to scanner
-        let closestIndex = 0;
-        let minDiff = Infinity;
-        events.forEach((_, idx) => {
-            const node = nodeRefs.current[idx];
-            if (node) {
-                const nodeCenterX = node.offsetLeft + (node.offsetWidth / 2);
-                const diff = Math.abs(currentScannerX - nodeCenterX);
-                if (diff < minDiff) {
-                    minDiff = diff;
-                    closestIndex = idx;
-                }
-            }
-        });
-        setActiveIndex(closestIndex);
+  const readProgress = readIndex === null || events.length <= 1 ? 0 : (readIndex / (events.length - 1)) * 100;
 
-        setIsScrolled(scrollLeft > 50);
+  const goToEvent = (index: number, openReadMode = false) => {
+    if (events.length === 0) return;
+    const nextIndex = clampIndex(index, events.length);
+    setActiveIndex(nextIndex);
+    if (openReadMode) setReadIndex(nextIndex);
+
+    const card = cardRefs.current[nextIndex];
+    card?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  };
+
+  const syncActiveEventFromScroll = () => {
+    const scroller = cardScrollerRef.current;
+    if (!scroller) return;
+
+    const maxScrollLeft = scroller.scrollWidth - scroller.clientWidth;
+    const edgeTolerance = 16;
+    if (scroller.scrollLeft <= edgeTolerance) {
+      setActiveIndex((currentIndex) => (currentIndex === 0 ? currentIndex : 0));
+      return;
+    }
+    if (maxScrollLeft - scroller.scrollLeft <= edgeTolerance) {
+      const lastIndex = events.length - 1;
+      setActiveIndex((currentIndex) => (currentIndex === lastIndex ? currentIndex : lastIndex));
+      return;
+    }
+
+    const scrollerRect = scroller.getBoundingClientRect();
+    const scrollerCenter = scrollerRect.left + scrollerRect.width / 2;
+    let closestIndex = activeIndex;
+    let closestDistance = Number.POSITIVE_INFINITY;
+
+    cardRefs.current.forEach((card, index) => {
+      if (!card) return;
+      const rect = card.getBoundingClientRect();
+      const cardCenter = rect.left + rect.width / 2;
+      const distance = Math.abs(cardCenter - scrollerCenter);
+
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestIndex = index;
+      }
+    });
+
+    setActiveIndex((currentIndex) => (currentIndex === closestIndex ? currentIndex : closestIndex));
+  };
+
+  const handleCardScroll = () => {
+    if (scrollFrameRef.current !== null) return;
+
+    scrollFrameRef.current = window.requestAnimationFrame(() => {
+      scrollFrameRef.current = null;
+      syncActiveEventFromScroll();
+    });
+  };
+
+  const handleCardWheel = (event: WheelEvent<HTMLDivElement>) => {
+    const scroller = cardScrollerRef.current;
+    if (!scroller || Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
+
+    event.preventDefault();
+    scroller.scrollBy({
+      left: event.deltaY,
+      behavior: "auto",
+    });
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+
+      const target = event.target;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        (target instanceof HTMLElement && target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        goToEvent((readIndex ?? activeIndex) - 1, readIndex !== null);
+      }
+
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        goToEvent((readIndex ?? activeIndex) + 1, readIndex !== null);
+      }
     };
 
-    const scrollToEvent = (index: number) => {
-        if (!scrollContainerRef.current || events.length === 0) return;
-        const container = scrollContainerRef.current;
-        const node = nodeRefs.current[index];
-        if (!node) return;
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeIndex, events.length, readIndex]);
 
-        const nodeCenterX = node.offsetLeft + (node.offsetWidth / 2);
-        const clientWidth = container.clientWidth;
-
-        container.scrollTo({
-            left: nodeCenterX - (clientWidth * 0.25),
-            behavior: "smooth"
-        });
+  useEffect(() => {
+    return () => {
+      if (scrollFrameRef.current !== null) {
+        window.cancelAnimationFrame(scrollFrameRef.current);
+      }
     };
+  }, []);
 
-    useEffect(() => {
-        handleScroll();
-        window.addEventListener('resize', handleScroll);
-        
-        const handleWindowScroll = () => {
-            setWindowScrollY(window.scrollY);
-        };
-        window.addEventListener('scroll', handleWindowScroll, { passive: true });
-        
-        // Initialize vertical scroll position
-        setWindowScrollY(window.scrollY);
-
-        return () => {
-            window.removeEventListener('resize', handleScroll);
-            window.removeEventListener('scroll', handleWindowScroll);
-        };
-    }, [events]);
-
-    const showMiniHeader = isScrolled && windowScrollY > 100;
-
+  if (!events.length) {
     return (
-        <div className="relative w-full bg-background min-h-screen flex flex-col transition-colors duration-500 overflow-hidden">
-            
-            {/* CONTEXTUAL MINI-HEADER */}
-            <div className={`fixed top-0 left-0 right-0 z-[60] bg-background/90 backdrop-blur-md border-b border-foreground/5 py-4 px-8 transition-all duration-500 transform ${showMiniHeader ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0"}`}>
-                <div className="max-w-[1600px] mx-auto flex items-center justify-between gap-8">
-                    <div className="flex items-center gap-4 overflow-hidden">
-                        <Link href="/" className="flex items-center gap-2 group flex-shrink-0 mr-1">
-                            <Logo className="w-7 h-7 transition-transform group-hover:scale-110 duration-500" />
-                        </Link>
-                        <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full flex-shrink-0 animate-pulse" />
-                        <h2 className="text-sm font-black text-foreground truncate uppercase tracking-[0.2em]">{timelineTitle}</h2>
-                    </div>
-                    
-                    <div className="flex-grow max-w-md hidden md:block">
-                        <div className="w-full h-1 bg-foreground/5 rounded-full overflow-hidden">
-                            <div 
-                                className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-300"
-                                style={{ width: `${progress}%` }}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 text-[10px] font-black text-foreground/40 uppercase tracking-widest">
-                        <span>{Math.round(progress)}% Complete</span>
-                    </div>
-                </div>
-            </div>
-
-            <div 
-                ref={scrollContainerRef}
-                onScroll={handleScroll}
-                className="flex-grow flex overflow-x-auto pt-72 pb-72 px-[20vw] no-scrollbar scroll-smooth relative z-10"
-                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-            >
-                <div className="flex items-center relative min-w-max">
-                    
-                    {/* THE CORE TIMELINE LINE */}
-                    <div className="absolute top-1/2 left-0 right-0 h-[2px] bg-foreground/5 -translate-y-1/2 z-0">
-                        {/* Progress Line - Precisely center-to-center */}
-                        {nodeRefs.current[0] && nodeRefs.current[events.length-1] && (
-                            <div 
-                                className="absolute bg-indigo-500 shadow-[0_0_20px_rgba(99,102,241,0.5)] transition-all duration-200 h-full"
-                                style={{ 
-                                    left: `${nodeRefs.current[0]!.offsetLeft + (nodeRefs.current[0]!.offsetWidth / 2)}px`,
-                                    width: `${(progress / 100) * ( (nodeRefs.current[events.length-1]!.offsetLeft + (nodeRefs.current[events.length-1]!.offsetWidth / 2)) - (nodeRefs.current[0]!.offsetLeft + (nodeRefs.current[0]!.offsetWidth / 2)) )}px`
-                                }}
-                            />
-                        )}
-                    </div>
-                    
-                    {events.map((event, index) => {
-                        const isEven = index % 2 === 0;
-                        
-                        // PIXEL PERFECT ACTIVATION: Check if scanner has passed the center of this node
-                        const container = nodeRefs.current[index];
-                        const nodeCenterX = container ? (container.offsetLeft + (container.offsetWidth / 2)) : 0;
-                        const isActive = nodeCenterX > 0 && activationPoint >= (nodeCenterX - 20);
-
-                        return (
-                            <div 
-                                key={event.id} 
-                                ref={el => { nodeRefs.current[index] = el; }}
-                                className="relative flex-shrink-0 w-[420px] flex flex-col items-center"
-                            >
-                                
-                                {/* Vertical Connector */}
-                                <div className={`absolute left-1/2 -translate-x-1/2 w-[2px] transition-all duration-700 ${
-                                    isActive ? "bg-indigo-500/30" : "bg-foreground/5"
-                                } ${isEven ? "bottom-1/2 mb-3 h-20" : "top-1/2 mt-3 h-20"}`} />
-
-                                {/* The Node (The Circle) */}
-                                <button 
-                                    onClick={() => scrollToEvent(index)}
-                                    className="relative z-20 focus:outline-none"
-                                >
-                                    <div className={`w-5 h-5 rounded-full border-4 transition-all duration-300 relative ${
-                                        isActive 
-                                            ? "bg-indigo-500 border-indigo-400 scale-110 shadow-[0_0_15px_rgba(99,102,241,0.4)]" 
-                                            : "bg-background border-foreground/10 hover:border-indigo-500/50"
-                                    }`}>
-                                        {isActive && <div className="absolute inset-0 bg-white/20 rounded-full animate-pulse" />}
-                                    </div>
-                                </button>
-
-                                {/* Event Card */}
-                                <div 
-                                    onClick={() => {
-                                        if (isActive) setExpandedEventIndex(index);
-                                        else scrollToEvent(index);
-                                    }}
-                                    className={`absolute left-1/2 -translate-x-1/2 w-[360px] transition-all duration-700 cursor-pointer hover:scale-[1.03] active:scale-[0.99] group/card ${
-                                        isEven ? "bottom-[calc(50%+4rem)]" : "top-[calc(50%+4rem)]"
-                                    } ${isActive ? "opacity-100 translate-y-0" : "opacity-30 translate-y-4"}`}
-                                >
-                                    <div className={`bg-card/70 backdrop-blur-md border rounded-[2rem] p-7 shadow-2xl transition-all duration-500 ${
-                                        isActive ? "border-indigo-500/20 shadow-indigo-500/5 bg-card/90" : "border-foreground/5 shadow-none"
-                                    }`}>
-                                        <div className="mb-4">
-                                            <span className={`text-[9px] font-black uppercase tracking-[0.2em] transition-colors duration-500 ${
-                                                isActive ? "text-indigo-500" : "text-foreground/20"
-                                            }`}>
-                                                {event.displayDate}
-                                            </span>
-                                            <HistoricalDateBadges isApproximate={event.isApproximate} datePrecision={event.datePrecision} className="mt-2" />
-                                        </div>
-
-                                        <h3 className={`text-xl font-black mb-3 tracking-tighter transition-colors duration-500 leading-tight ${
-                                            isActive ? "text-foreground" : "text-foreground/30"
-                                        }`}>
-                                            {event.title}
-                                        </h3>
-                                        <p className={`text-sm leading-relaxed font-medium transition-colors duration-500 line-clamp-4 ${
-                                            isActive ? "text-foreground/60" : "text-foreground/20"
-                                        }`}>
-                                            {event.description}
-                                        </p>
-
-                                        {isActive && (
-                                            <div className="mt-5 flex items-center gap-4 border-t border-foreground/5 pt-4">
-                                                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500 group-hover/card:text-indigo-400 transition-colors">
-                                                    Read Mode
-                                                </span>
-                                                {event.mediaData && event.mediaData.length > 0 && (
-                                                    <span className="flex items-center gap-1.5 text-[9px] font-mono text-foreground/40 bg-foreground/5 px-2 py-1 rounded-md">
-                                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                        </svg>
-                                                        {event.mediaData.length}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })}
-
-                    <div className="w-[40vw] flex-shrink-0" />
-                </div>
-            </div>
-
-            {/* FLOATING NAVIGATION BUTTONS */}
-            {activeIndex > 0 && (
-                <button
-                    onClick={() => scrollToEvent(activeIndex - 1)}
-                    className="fixed left-6 top-1/2 -translate-y-1/2 z-[70] w-14 h-14 rounded-full bg-card/80 border border-foreground/10 text-foreground hidden md:flex items-center justify-center shadow-2xl hover:bg-indigo-600 hover:text-white hover:border-indigo-500 hover:scale-110 active:scale-95 transition-all duration-300 group"
-                    aria-label="Previous event"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 transform group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
-                    </svg>
-                </button>
-            )}
-            {activeIndex < events.length - 1 && (
-                <button
-                    onClick={() => scrollToEvent(activeIndex + 1)}
-                    className="fixed right-6 top-1/2 -translate-y-1/2 z-[70] w-14 h-14 rounded-full bg-card/80 border border-foreground/10 text-foreground hidden md:flex items-center justify-center shadow-2xl hover:bg-indigo-600 hover:text-white hover:border-indigo-500 hover:scale-110 active:scale-95 transition-all duration-300 group"
-                    aria-label="Next event"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 transform group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-                    </svg>
-                </button>
-            )}
-
-            {/* Scroll Indication Footer */}
-            {!isScrolled && (
-                <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex items-center gap-4 animate-pulse opacity-40">
-                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-foreground">Begin Story</span>
-                </div>
-            )}
-
-            {/* Read Mode Overlay */}
-            {expandedEventIndex !== null && events[expandedEventIndex] && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 md:p-12 animate-in fade-in duration-300">
-                    <div className="absolute inset-0 bg-background/95 backdrop-blur-3xl" onClick={() => setExpandedEventIndex(null)} />
-                    
-                    <div className="relative w-full max-w-4xl max-h-[90vh] bg-card border border-foreground/10 rounded-[2rem] shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-8 duration-500">
-                        {/* Close Button */}
-                        <button 
-                            onClick={() => setExpandedEventIndex(null)}
-                            className="absolute right-6 top-6 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-foreground/5 hover:bg-foreground/10 transition-colors"
-                        >
-                            <svg className="w-5 h-5 text-foreground/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-
-                        <div className="flex-1 overflow-y-auto custom-scrollbar p-8 md:p-12">
-                            <div className="max-w-2xl mx-auto space-y-8">
-                                <div className="space-y-4 text-center">
-                                    <span className="inline-block text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500 bg-indigo-500/10 px-4 py-1.5 rounded-full">
-                                        {events[expandedEventIndex].displayDate}
-                                    </span>
-                                    <h2 className="text-4xl md:text-5xl font-black tracking-tighter text-foreground">
-                                        {events[expandedEventIndex].title}
-                                    </h2>
-                                </div>
-                                
-                                <div className="w-24 h-1 bg-gradient-to-r from-indigo-500 to-purple-500 mx-auto rounded-full" />
-                                
-                                <div className="prose prose-invert max-w-none text-foreground/70 leading-loose">
-                                    <p className="text-lg whitespace-pre-wrap">{events[expandedEventIndex].description}</p>
-                                </div>
-
-                                {events[expandedEventIndex].mediaData && events[expandedEventIndex].mediaData!.length > 0 && (
-                                    <div className="pt-8 space-y-8 border-t border-foreground/10 mt-8">
-                                        {events[expandedEventIndex].mediaData!.map((media, i) => (
-                                            <div key={i} className="rounded-2xl overflow-hidden border border-foreground/10 bg-foreground/5">
-                                                {media.type === 'image' ? (
-                                                    <img src={media.url} alt={media.title || "Event media"} className="w-full h-auto object-cover" />
-                                                ) : media.type === 'audio' ? (
-                                                    <div className="p-6">
-                                                        <p className="text-xs font-mono uppercase tracking-widest text-foreground/40 mb-4">{media.title || "Audio Recording"}</p>
-                                                        <audio controls className="w-full">
-                                                            <source src={media.url} />
-                                                        </audio>
-                                                    </div>
-                                                ) : null}
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
+      <div className="flex h-full items-center justify-center bg-background px-8 text-center">
+        <p className="text-sm font-medium text-foreground/50">This timeline does not have any events yet.</p>
+      </div>
     );
+  }
+
+  if (readEvent && readIndex !== null) {
+    return (
+      <section className="flex h-full min-h-0 flex-col bg-background text-foreground">
+        <header className="flex shrink-0 items-center justify-between border-b border-foreground/10 bg-background/95 px-8 py-5 backdrop-blur-xl">
+          <button
+            type="button"
+            onClick={() => setReadIndex(null)}
+            className="rounded-full border border-indigo-500/25 bg-indigo-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-indigo-500 transition active:scale-95"
+          >
+            Back to Quick Glance
+          </button>
+          <div className="min-w-0 px-6 text-center">
+            <h2 className="truncate text-sm font-black uppercase tracking-[0.2em] text-foreground/70">
+              {timelineTitle}
+            </h2>
+          </div>
+          <span className="text-[10px] font-black uppercase tracking-[0.24em] text-foreground/35">
+            {readIndex + 1} / {events.length}
+          </span>
+        </header>
+
+        <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-10 pb-8 pt-5">
+          <article className={`mx-auto grid h-full max-w-7xl gap-10 ${readMedia.length > 0 ? "grid-cols-[minmax(0,0.92fr)_minmax(360px,0.58fr)]" : "grid-cols-1"}`}>
+            <div className="min-h-0">
+              <p className="mb-2 text-[11px] font-black uppercase tracking-[0.3em] text-indigo-500">
+                {readEvent.displayDate}
+              </p>
+              <HistoricalDateBadges
+                isApproximate={readEvent.isApproximate}
+                datePrecision={readEvent.datePrecision}
+                className="mb-4"
+              />
+              <h1 className={`${readMedia.length > 0 ? "max-w-4xl" : "max-w-5xl"} text-5xl font-black leading-[0.92] tracking-tighter text-foreground xl:text-6xl`}>
+                {readEvent.title}
+              </h1>
+              <div className="my-6 h-px w-24 bg-indigo-500/70" />
+              <div className={`custom-scrollbar overflow-y-auto pr-6 ${readMedia.length > 0 ? "max-h-[46vh]" : "max-h-[50vh]"}`}>
+                <p className="whitespace-pre-line text-lg font-medium leading-8 text-foreground/68">
+                  {readEvent.description}
+                </p>
+              </div>
+            </div>
+
+            {readMedia.length > 0 && (
+              <aside className="custom-scrollbar min-h-0 overflow-y-auto rounded-2xl border border-foreground/10 bg-card/70 p-4">
+                <p className="mb-4 text-[10px] font-black uppercase tracking-[0.24em] text-foreground/38">
+                  Event Media
+                </p>
+                <div className="space-y-4">
+                  {readMedia.map((media, index) => (
+                    <div
+                      key={media.id || `${media.url}-${index}`}
+                      className="overflow-hidden rounded-xl border border-foreground/10 bg-foreground/[0.04]"
+                    >
+                      {media.type === "image" ? (
+                        <img
+                          src={media.url}
+                          alt={media.title || readEvent.title}
+                          className="max-h-[360px] w-full object-contain"
+                        />
+                      ) : media.type === "audio" ? (
+                        <div className="p-4">
+                          <p className="mb-3 text-[10px] font-mono uppercase tracking-widest text-foreground/45">
+                            {media.title || "Audio recording"}
+                          </p>
+                          <audio controls className="w-full">
+                            <source src={media.url} />
+                          </audio>
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </aside>
+            )}
+          </article>
+        </div>
+
+        <footer className="shrink-0 border-t border-foreground/10 bg-background/95 px-8 py-2.5 backdrop-blur-xl">
+          <div className="mx-auto max-w-5xl">
+            <div className="mb-1.5 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => goToEvent(readIndex - 1, true)}
+                disabled={readIndex === 0}
+                className="rounded-full border border-foreground/10 px-3.5 py-1.5 text-[9px] font-black uppercase tracking-widest text-foreground/55 transition hover:bg-foreground/5 disabled:opacity-20"
+              >
+                Previous
+              </button>
+              <span className="text-[9px] font-black uppercase tracking-[0.24em] text-foreground/35">
+                Event {readIndex + 1} of {events.length}
+              </span>
+              <button
+                type="button"
+                onClick={() => goToEvent(readIndex + 1, true)}
+                disabled={readIndex === events.length - 1}
+                className="rounded-full border border-foreground/10 px-3.5 py-1.5 text-[9px] font-black uppercase tracking-widest text-foreground/55 transition hover:bg-foreground/5 disabled:opacity-20"
+              >
+                Next
+              </button>
+            </div>
+            <div className="relative py-0.5">
+              <div className="pointer-events-none absolute left-0 right-0 top-1/2 h-1 -translate-y-1/2 rounded-full border border-foreground/10 bg-foreground/[0.055] shadow-inner">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-sky-400 via-indigo-500 to-violet-500 shadow-[0_0_18px_rgba(99,102,241,0.28)] transition-all"
+                  style={{ width: `${readProgress}%` }}
+                />
+              </div>
+              <div className="pointer-events-none absolute left-0 right-0 top-1/2 -translate-y-1/2">
+                {events.map((event, index) => {
+                  const isReached = index <= readIndex;
+                  const position = events.length <= 1 ? 0 : (index / (events.length - 1)) * 100;
+                  return (
+                    <span
+                      key={event.id}
+                      className={`absolute top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full border transition ${
+                        isReached
+                          ? "border-white/80 bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.45)]"
+                          : "border-foreground/15 bg-background"
+                      }`}
+                      style={{ left: `${position}%` }}
+                    />
+                  );
+                })}
+              </div>
+              <div
+                className="pointer-events-none absolute top-1/2 flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/40 bg-indigo-600 text-white shadow-xl shadow-indigo-500/25 transition-all"
+                style={{ left: `${readProgress}%` }}
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-white" />
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={events.length - 1}
+                step={1}
+                value={readIndex}
+                onChange={(event) => goToEvent(Number(event.target.value), true)}
+                className="relative z-10 h-5 w-full cursor-grab opacity-0 active:cursor-grabbing"
+                aria-label="Jump to event"
+              />
+            </div>
+          </div>
+        </footer>
+      </section>
+    );
+  }
+
+  return (
+    <section className="flex h-full min-h-0 flex-col overflow-hidden bg-background text-foreground">
+      <header className="shrink-0 px-10 pb-5 pt-8">
+        <p className="text-[10px] font-black uppercase tracking-[0.32em] text-indigo-500">Story Mode</p>
+        <div className="mt-2 flex items-end justify-between gap-8">
+          <div className="min-w-0">
+            <h1 className="truncate text-3xl font-black tracking-tight text-foreground">{timelineTitle}</h1>
+            <p className="mt-2 text-sm font-medium text-foreground/45">
+              Quick Glance. Select an event to open Read Mode.
+            </p>
+          </div>
+          <span className="shrink-0 text-[10px] font-black uppercase tracking-[0.24em] text-foreground/35">
+            {activeIndex + 1} / {events.length}
+          </span>
+        </div>
+      </header>
+
+      <div className="relative min-h-0 flex-1">
+        <button
+          type="button"
+          onClick={() => goToEvent(activeIndex - 1)}
+          disabled={activeIndex === 0}
+          className="absolute left-5 top-1/2 z-20 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-foreground/10 bg-card/90 text-foreground shadow-xl transition hover:bg-indigo-600 hover:text-white disabled:pointer-events-none disabled:opacity-20"
+          aria-label="Previous event"
+        >
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          onClick={() => goToEvent(activeIndex + 1)}
+          disabled={activeIndex === events.length - 1}
+          className="absolute right-5 top-1/2 z-20 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-foreground/10 bg-card/90 text-foreground shadow-xl transition hover:bg-indigo-600 hover:text-white disabled:pointer-events-none disabled:opacity-20"
+          aria-label="Next event"
+        >
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+
+        <div
+          ref={cardScrollerRef}
+          onScroll={handleCardScroll}
+          onWheel={handleCardWheel}
+          className="no-scrollbar h-full overflow-x-auto px-24 pb-10 pt-2 scroll-smooth"
+        >
+          <div className="min-w-max">
+            <div className="relative h-24">
+              <div className="relative z-10 flex gap-5">
+                {events.map((event, index) => {
+                  const isActive = index === activeIndex;
+                  const isPast = index <= activeIndex;
+                  const isCompletedSegment = index < activeIndex;
+                  const accent = ACCENTS[index % ACCENTS.length];
+
+                  return (
+                    <button
+                      key={event.id}
+                      type="button"
+                      onClick={() => goToEvent(index)}
+                      className="group relative flex w-[460px] shrink-0 flex-col items-center"
+                      aria-label={`Go to ${event.title}`}
+                    >
+                      {index < events.length - 1 && (
+                        <span
+                          className={`absolute left-1/2 top-[9px] h-[3px] w-[480px] rounded-full bg-gradient-to-r ${
+                            isCompletedSegment ? accent.line : "from-foreground/12 to-foreground/12"
+                          }`}
+                          aria-hidden="true"
+                        />
+                      )}
+                      <span
+                        className={`relative z-10 flex h-5 w-5 rounded-full border-[3px] ring-4 transition ${
+                          isActive
+                            ? `border-white ${accent.dot} ${accent.ring} shadow-[0_0_18px_rgba(125,211,252,0.5)]`
+                            : isPast
+                              ? `border-white/80 ${accent.dot} ${accent.ring}`
+                              : "border-foreground/20 bg-background ring-foreground/5 group-hover:border-foreground/45"
+                        }`}
+                      />
+                      <span className={`mt-4 max-w-[18rem] truncate text-[11px] font-black uppercase tracking-wider ${isActive ? accent.activeText : "text-foreground/42"}`}>
+                        {event.displayDate}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex gap-5">
+              {events.map((event, index) => {
+                const coverImage = getCoverImage(event);
+                const isActive = index === activeIndex;
+                const accent = ACCENTS[index % ACCENTS.length];
+
+                return (
+              <button
+                key={event.id}
+                ref={(element) => {
+                  cardRefs.current[index] = element;
+                }}
+                type="button"
+                onClick={() => {
+                  setActiveIndex(index);
+                  setReadIndex(index);
+                }}
+                className={`group h-[250px] w-[460px] shrink-0 overflow-hidden rounded-2xl border text-left shadow-xl transition ${
+                  isActive
+                    ? `${accent.border} opacity-100 ${accent.shadow}`
+                    : "border-foreground/10 opacity-90 hover:opacity-100 dark:opacity-72"
+                }`}
+              >
+                <div className={`flex h-full bg-gradient-to-br ${accent.card}`}>
+                  <div className="flex min-w-0 flex-1 flex-col justify-center px-6 py-5">
+                    <div className="mb-3 flex flex-wrap items-center gap-2">
+                      <span className="text-[10px] font-black uppercase tracking-[0.22em] text-white/65">
+                        {event.displayDate}
+                      </span>
+                      <HistoricalDateBadges
+                        isApproximate={event.isApproximate}
+                        datePrecision={event.datePrecision}
+                        className="text-[9px]"
+                      />
+                    </div>
+                    <h3 className="line-clamp-3 pb-0.5 text-[1.42rem] font-black leading-[1.08] tracking-tight text-white">
+                      {event.title}
+                    </h3>
+                    <p className="mt-3 line-clamp-4 text-sm font-medium leading-6 text-white/68">
+                      {event.description}
+                    </p>
+                  </div>
+
+                  {coverImage ? (
+                    <div className="relative w-[170px] shrink-0 overflow-hidden bg-black/20">
+                      <img
+                        src={coverImage.url}
+                        alt={coverImage.title || event.title}
+                        className="h-full w-full object-cover"
+                      />
+                      <div className="absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-black/35 to-transparent" />
+                    </div>
+                  ) : (
+                    <div className="flex w-[132px] shrink-0 items-center justify-center border-l border-white/10 bg-white/[0.05]">
+                      <span className={`text-5xl font-black ${accent.text}`}>
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 }

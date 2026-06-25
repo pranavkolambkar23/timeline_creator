@@ -224,7 +224,7 @@ export default function FullMapView({ events }: FullMapViewProps) {
   const isTargetEvent = ['==', ['get', 'eventId'], popupInfo?.eventId || ''];
 
   return (
-    <div ref={mapContainerRef} className="w-full h-full md:h-[800px] rounded-none md:rounded-b-xl overflow-hidden relative shadow-[0_0_40px_-15px_rgba(139,92,246,0.2)] bg-black border-x border-b border-foreground/5 [&_.maplibregl-ctrl-bottom-right]:hidden md:[&_.maplibregl-ctrl-bottom-right]:block">
+    <div ref={mapContainerRef} className="w-full h-full md:h-[800px] rounded-none md:rounded-b-xl overflow-hidden relative shadow-[0_0_40px_-15px_rgba(139,92,246,0.2)] bg-black border-b border-r border-foreground/5 [&_.maplibregl-ctrl-bottom-right]:hidden md:[&_.maplibregl-ctrl-bottom-right]:block">
       
       {/* GIS LAYER CONTROL PANEL */}
       <div className={`absolute top-6 left-6 z-20 hidden md:flex flex-col transition-all duration-300 ${isLayerPanelOpen ? 'w-80' : 'w-14'}`}>

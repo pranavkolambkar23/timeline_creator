@@ -218,9 +218,8 @@ export default function VerticalTimelineWithMap({ events, onRequestExplorer }: V
       </div>
       
       {/* Right Pane: Interactive Map */}
-      <div className="min-h-0 w-full flex-1 lg:w-[60%] xl:w-2/3 lg:h-full p-0 lg:p-6 bg-black/95 relative overflow-hidden flex items-center justify-center">
-        <div className="absolute inset-0 bg-gradient-to-r from-background to-transparent z-10 w-8 lg:w-16 pointer-events-none" />
-        <InteractiveMap events={events} activeEventId={activeEventId} />
+      <div className="min-h-0 w-full flex-1 lg:w-[60%] xl:w-2/3 lg:h-full relative overflow-hidden flex items-stretch justify-stretch">
+        <InteractiveMap events={events} activeEventId={activeEventId} flush />
       </div>
     </div>
   );
