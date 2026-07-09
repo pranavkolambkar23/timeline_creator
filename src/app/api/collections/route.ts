@@ -3,9 +3,16 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-const collectionInclude = {
+const getCollectionInclude = (tenantTag?: string | null) => ({
     collectionEvents: {
         orderBy: { position: "asc" as const },
+        where: tenantTag ? {
+            event: {
+                timeline: {
+                    tags: { has: tenantTag }
+                }
+            }
+        } : undefined,
         include: {
             event: {
                 include: {
@@ -16,22 +23,40 @@ const collectionInclude = {
             },
         },
     },
-};
+});
 
 export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const scope = searchParams.get("scope") === "personal" ? "PERSONAL" : "FEATURED";
     const session = await getServerSession(authOptions);
+    const tenantTag = req.headers.get("x-tenant-tag");
 
     if (scope === "PERSONAL" && !session?.user?.id) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    let whereClause: any = scope === "FEATURED"
+        ? { scope }
+        : { scope, userId: session!.user.id };
+
+    if (tenantTag) {
+        whereClause = {
+            ...whereClause,
+            collectionEvents: {
+                some: {
+                    event: {
+                        timeline: {
+                            tags: { has: tenantTag }
+                        }
+                    }
+                }
+            }
+        };
+    }
+
     const collections = await prisma.collection.findMany({
-        where: scope === "FEATURED"
-            ? { scope }
-            : { scope, userId: session!.user.id },
-        include: collectionInclude,
+        where: whereClause,
+        include: getCollectionInclude(tenantTag),
         orderBy: { updatedAt: "desc" },
     });
 
@@ -55,6 +80,8 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Collection name is required" }, { status: 400 });
     }
 
+    const tenantTag = req.headers.get("x-tenant-tag");
+
     const collection = await prisma.collection.create({
         data: {
             name,
@@ -62,7 +89,7 @@ export async function POST(req: Request) {
             scope,
             userId: session.user.id,
         },
-        include: collectionInclude,
+        include: getCollectionInclude(tenantTag),
     });
 
     return NextResponse.json(collection, { status: 201 });

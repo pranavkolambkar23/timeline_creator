@@ -11,7 +11,8 @@ export async function GET(req: Request) {
 
         const session = await getServerSession(authOptions);
 
-        let whereClause = {};
+        const tenantTag = req.headers.get("x-tenant-tag");
+        let whereClause: any = {};
 
         if (mode === "personal") {
             if (!session || !session.user?.id) {
@@ -28,6 +29,13 @@ export async function GET(req: Request) {
                 timeline: {
                     isFeatured: true
                 }
+            };
+        }
+
+        if (tenantTag) {
+            whereClause.timeline = {
+                ...whereClause.timeline,
+                tags: { has: tenantTag }
             };
         }
 

@@ -4,6 +4,7 @@ import Header from "@/components/Header";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { compareHistoricalDates, historicalDisplayDate } from "@/lib/historicalDate";
+import { headers } from "next/headers";
 
 export default async function TimelinePage({
     params,
@@ -13,6 +14,8 @@ export default async function TimelinePage({
     const { id } = await params;
     const session = await getServerSession(authOptions);
     const isAdmin = session?.user?.role === "ADMIN";
+    const headersList = await headers();
+    const tenantTag = headersList.get("x-tenant-tag");
     
     let timeline = null;
     if (id) {
@@ -27,20 +30,25 @@ export default async function TimelinePage({
             });
 
             if (dbTimeline) {
-                timeline = {
-                    ...dbTimeline,
-                    events: dbTimeline.timelineEvents.sort(compareHistoricalDates).map((e: any) => ({
-                        id: e.id,
-                        title: e.title,
-                        description: e.description,
-                        date: e.date,
-                        displayDate: historicalDisplayDate(e),
-                        datePrecision: e.datePrecision,
-                        isApproximate: e.isApproximate,
-                        locationData: e.locationData,
-                        mediaData: e.mediaData,
-                    })),
-                };
+                // Secure lock-in check: If accessed via subdomain, ensure timeline has the tenant tag
+                if (tenantTag && !dbTimeline.tags.includes(tenantTag)) {
+                    timeline = null;
+                } else {
+                    timeline = {
+                        ...dbTimeline,
+                        events: dbTimeline.timelineEvents.sort(compareHistoricalDates).map((e: any) => ({
+                            id: e.id,
+                            title: e.title,
+                            description: e.description,
+                            date: e.date,
+                            displayDate: historicalDisplayDate(e),
+                            datePrecision: e.datePrecision,
+                            isApproximate: e.isApproximate,
+                            locationData: e.locationData,
+                            mediaData: e.mediaData,
+                        })),
+                    };
+                }
             }
         } catch (err) {
             console.error("Database fetch error:", err);

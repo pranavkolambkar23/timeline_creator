@@ -20,6 +20,7 @@ export async function POST(req: Request) {
         // 📝 2. Parse body
         const body = await req.json();
         const { title, description, events, category, tags, coverImage } = body;
+        const tenantTag = req.headers.get("x-tenant-tag");
 
         // ⚠️ 3. Validate timeline
         if (!title || !description) {
@@ -53,7 +54,9 @@ export async function POST(req: Request) {
                 title,
                 description,
                 category: category || "General",
-                tags: tags || [],
+                tags: tenantTag 
+                    ? Array.from(new Set([...(tags || []), tenantTag]))
+                    : (tags || []),
                 coverImage: coverImage || null,
                 userId: session.user.id,
 
@@ -100,13 +103,14 @@ export async function GET(req: Request) {
 
         const session = await getServerSession(authOptions);
         const isAdmin = session?.user?.role === "ADMIN";
+        const tenantTag = req.headers.get("x-tenant-tag");
 
         // Logic for fetching:
         // 1. Featured -> No auth required
         // 2. adminAll -> Requires ADMIN role
         // 3. User timelines -> Requires logged in user
         
-        let whereClause = {};
+        let whereClause: any = {};
 
         if (featured) {
             whereClause = { isFeatured: true };
@@ -120,6 +124,10 @@ export async function GET(req: Request) {
                 return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
             }
             whereClause = { userId: session.user.id };
+        }
+
+        if (tenantTag) {
+            whereClause = { ...whereClause, tags: { has: tenantTag } };
         }
 
         const timelines = await prisma.timeline.findMany({

@@ -97,10 +97,20 @@ export async function GET(req: Request) {
             return NextResponse.json({ results: [] });
         }
 
+        const tenantTag = req.headers.get("x-tenant-tag");
         const session = await getServerSession(authOptions);
-        const visibility = session?.user?.id
+        let visibility: any = session?.user?.id
             ? { OR: [{ isFeatured: true }, { userId: session.user.id }] }
             : { isFeatured: true };
+
+        if (tenantTag) {
+            visibility = {
+                AND: [
+                    visibility,
+                    { tags: { has: tenantTag } }
+                ]
+            };
+        }
 
         const timelines = await prisma.timeline.findMany({
             where: visibility,
