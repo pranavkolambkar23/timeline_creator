@@ -99,7 +99,7 @@ export default function MobileAppActions({
                         type="button"
                         onClick={() => {
                             onNavigate?.();
-                            signOut();
+                            signOut({ callbackUrl: window.location.origin });
                         }}
                         className="flex w-full items-center gap-3 rounded-2xl border border-rose-500/15 bg-rose-500/10 px-4 py-3 text-left text-[10px] font-black uppercase tracking-widest text-rose-400"
                     >

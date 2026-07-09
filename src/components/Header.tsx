@@ -14,19 +14,9 @@ export default function Header() {
     const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
     const [isMobileHeaderVisible, setIsMobileHeaderVisible] = useState(true);
     const [isMoreOpen, setIsMoreOpen] = useState(false);
-    const [isEasyLearning, setIsEasyLearning] = useState(false);
     const previousScrollYRef = useRef(0);
     const upwardScrollRef = useRef(0);
     const moreMenuRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        if (typeof window !== "undefined") {
-            const hostname = window.location.hostname;
-            if (hostname.startsWith("easylearning.")) {
-                setIsEasyLearning(true);
-            }
-        }
-    }, []);
 
     useEffect(() => {
         const savedTheme = localStorage.getItem("theme");
@@ -187,7 +177,7 @@ export default function Header() {
                                     {session.user?.email?.split("@")[0]}
                                 </span>
                                 <button
-                                    onClick={() => signOut()}
+                                    onClick={() => signOut({ callbackUrl: window.location.origin })}
                                     className="text-[9px] uppercase tracking-tighter font-black text-slate-500 hover:text-red-500 transition-colors"
                                 >
                                     Sign Out
@@ -198,23 +188,21 @@ export default function Header() {
                             </div>
                         </div>
                     ) : (
-                        !isEasyLearning && (
-                            <div className="flex items-center gap-1.5 sm:gap-2">
-                                <button
-                                    onClick={() => signIn()}
-                                    className="hidden text-[10px] font-black uppercase tracking-widest text-foreground/60 hover:text-foreground px-1.5 py-2 transition-colors sm:block sm:px-4"
-                                >
-                                    Login
-                                </button>
-                                <Link
-                                    href="/signup"
-                                    className="bg-indigo-600 text-white px-3 sm:px-6 py-2.5 sm:py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 shadow-xl shadow-indigo-500/20 transition-all active:scale-95"
-                                >
-                                    <span className="sm:hidden">Sign Up</span>
-                                    <span className="hidden sm:inline">Get Started</span>
-                                </Link>
-                            </div>
-                        )
+                        <div className="flex items-center gap-1.5 sm:gap-2">
+                            <button
+                                onClick={() => signIn(undefined, { callbackUrl: window.location.origin })}
+                                className="hidden text-[10px] font-black uppercase tracking-widest text-foreground/60 hover:text-foreground px-1.5 py-2 transition-colors sm:block sm:px-4"
+                            >
+                                Login
+                            </button>
+                            <Link
+                                href="/signup"
+                                className="bg-indigo-600 text-white px-3 sm:px-6 py-2.5 sm:py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 shadow-xl shadow-indigo-500/20 transition-all active:scale-95"
+                            >
+                                <span className="sm:hidden">Sign Up</span>
+                                <span className="hidden sm:inline">Get Started</span>
+                            </Link>
+                        </div>
                     )}
                 </div>
             </div>

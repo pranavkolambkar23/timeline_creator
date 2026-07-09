@@ -78,5 +78,25 @@ export const authOptions: NextAuthOptions = {
             }
             return session;
         },
+
+        async redirect({ url, baseUrl }) {
+            // Allow relative URLs (e.g. /dashboard)
+            if (url.startsWith("/")) return `${baseUrl}${url}`;
+
+            // Allow same-origin redirects
+            if (new URL(url).origin === baseUrl) return url;
+
+            // ✅ Allow the easylearning subdomain to redirect back to itself
+            const allowedOrigins = [
+                "https://timelinecreator.co.in",
+                "https://www.timelinecreator.co.in",
+                "https://easylearning.timelinecreator.co.in",
+                "http://localhost:3000",
+            ];
+            const urlOrigin = new URL(url).origin;
+            if (allowedOrigins.includes(urlOrigin)) return url;
+
+            return baseUrl;
+        },
     },
 };
