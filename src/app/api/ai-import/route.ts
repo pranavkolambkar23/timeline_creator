@@ -19,15 +19,27 @@ type ProviderResult = {
 };
 
 const GEMINI_MODELS = [
-    "gemini-1.5-flash",
-    "gemini-1.5-pro",
-    "gemini-2.0-flash",
+    process.env.GEMINI_MODEL,
+    "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
+    "gemini-3-flash-preview",
+    "gemini-flash-lite-latest",
     "gemini-flash-latest",
-];
+].filter(Boolean) as string[];
 
 const GROQ_CHAT_COMPLETIONS_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_TEXT_MODEL = process.env.GROQ_TEXT_MODEL || "llama-3.3-70b-versatile";
-const GROQ_VISION_MODEL = process.env.GROQ_VISION_MODEL || "meta-llama/llama-4-scout-17b-16e-instruct";
+const GROQ_TEXT_MODELS = [
+    process.env.GROQ_TEXT_MODEL,
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b",
+    "qwen/qwen3.8-27b",
+].filter(Boolean) as string[];
+
+const GROQ_VISION_MODELS = [
+    process.env.GROQ_VISION_MODEL,
+    "qwen/qwen3.8-27b",
+].filter(Boolean) as string[];
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
@@ -112,7 +124,26 @@ async function generateWithGemini(prompt?: string, files: UploadedFile[] = []): 
     throw new Error(`All Gemini models are currently busy or unavailable. Last error: ${lastMessage}`);
 }
 
-function buildGroqUserContent(prompt?: string, files: UploadedFile[] = []) {
+function buildGroqUserContent(modelSupportsVision: boolean, prompt?: string, files: UploadedFile[] = []) {
+    const imageFiles = files.filter((file) => file.mimeType.startsWith("image/"));
+    const nonImageFiles = files.filter((file) => !file.mimeType.startsWith("image/"));
+
+    if (!modelSupportsVision || imageFiles.length === 0) {
+        const textParts: string[] = [];
+        if (prompt) {
+            textParts.push(`User request: ${prompt}`);
+        } else {
+            textParts.push("Extract a timeline from the provided request.");
+        }
+
+        if (files.length > 0) {
+            const unsupported = files.map((f) => f.name || f.mimeType).join(", ");
+            textParts.push(`Note: The following uploaded files could not be directly processed by this text model fallback: ${unsupported}. Extract timeline events based on the user prompt.`);
+        }
+
+        return textParts.join("\n\n");
+    }
+
     const content: Array<
         | { type: "text"; text: string }
         | { type: "image_url"; image_url: { url: string } }
@@ -120,27 +151,21 @@ function buildGroqUserContent(prompt?: string, files: UploadedFile[] = []) {
         { type: "text", text: prompt ? `User request: ${prompt}` : "Extract a timeline from the provided files." },
     ];
 
-    const unsupportedFiles: string[] = [];
-
-    for (const file of files) {
-        if (file.mimeType.startsWith("image/")) {
-            const data = normalizeBase64Data(file);
-            content.push({
-                type: "image_url",
-                image_url: {
-                    url: `data:${file.mimeType};base64,${data}`,
-                },
-            });
-            continue;
-        }
-
-        unsupportedFiles.push(file.name || file.mimeType);
+    for (const file of imageFiles) {
+        const data = normalizeBase64Data(file);
+        content.push({
+            type: "image_url",
+            image_url: {
+                url: `data:${file.mimeType};base64,${data}`,
+            },
+        });
     }
 
-    if (unsupportedFiles.length > 0) {
+    if (nonImageFiles.length > 0) {
+        const unsupported = nonImageFiles.map((f) => f.name || f.mimeType).join(", ");
         content.push({
             type: "text",
-            text: `The following uploaded files could not be sent to the Groq fallback because they are not images: ${unsupportedFiles.join(", ")}. Use only the readable prompt text and any image uploads.`,
+            text: `The following uploaded files could not be sent to the Groq fallback because they are not images: ${unsupported}. Use only the readable prompt text and image uploads.`,
         });
     }
 
@@ -152,41 +177,60 @@ async function generateWithGroq(prompt?: string, files: UploadedFile[] = []): Pr
         throw new Error("GROQ_API_KEY is not configured in environment variables");
     }
 
-    const modelName = files.some((file) => file.mimeType.startsWith("image/")) ? GROQ_VISION_MODEL : GROQ_TEXT_MODEL;
+    const hasImages = files.some((file) => file.mimeType.startsWith("image/"));
+    const candidateModels = hasImages
+        ? [...new Set([...GROQ_VISION_MODELS, ...GROQ_TEXT_MODELS])]
+        : GROQ_TEXT_MODELS;
 
-    console.log(`[AI Import] Attempting Groq fallback with: ${modelName}`);
-    const response = await fetch(GROQ_CHAT_COMPLETIONS_URL, {
-        method: "POST",
-        headers: {
-            Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            model: modelName,
-            messages: [
-                { role: "system", content: systemInstruction },
-                { role: "user", content: buildGroqUserContent(prompt, files) },
-            ],
-            temperature: 0.2,
-            max_completion_tokens: 4096,
-            response_format: { type: "json_object" },
-        }),
-    });
+    let lastError: unknown = null;
 
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Groq fallback failed (${response.status}): ${errorText}`);
+    for (const modelName of candidateModels) {
+        try {
+            console.log(`[AI Import] Attempting Groq fallback with: ${modelName}`);
+            const modelSupportsVision = GROQ_VISION_MODELS.includes(modelName);
+            const userContent = buildGroqUserContent(modelSupportsVision, prompt, files);
+
+            const response = await fetch(GROQ_CHAT_COMPLETIONS_URL, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    model: modelName,
+                    messages: [
+                        { role: "system", content: systemInstruction },
+                        { role: "user", content: userContent },
+                    ],
+                    temperature: 0.2,
+                    max_completion_tokens: 4096,
+                    response_format: { type: "json_object" },
+                }),
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Groq model ${modelName} returned (${response.status}): ${errorText}`);
+            }
+
+            const data = await response.json();
+            const text = data?.choices?.[0]?.message?.content;
+
+            if (typeof text !== "string" || !text.trim()) {
+                throw new Error(`Groq model ${modelName} returned an empty response`);
+            }
+
+            console.log(`[AI Import] Success using Groq fallback: ${modelName}`);
+            return { provider: "groq", model: modelName, text };
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            console.warn(`[AI Import] Groq model ${modelName} failed. Error:`, message);
+            lastError = error;
+        }
     }
 
-    const data = await response.json();
-    const text = data?.choices?.[0]?.message?.content;
-
-    if (typeof text !== "string" || !text.trim()) {
-        throw new Error("Groq fallback returned an empty response");
-    }
-
-    console.log(`[AI Import] Success using Groq fallback: ${modelName}`);
-    return { provider: "groq", model: modelName, text };
+    const lastMessage = lastError instanceof Error ? lastError.message : String(lastError);
+    throw new Error(`All Groq fallback models failed. Last error: ${lastMessage}`);
 }
 
 async function generateTimelineJson(prompt?: string, files: UploadedFile[] = []) {
